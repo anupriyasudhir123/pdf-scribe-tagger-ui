@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -426,10 +425,8 @@ const Utilization = () => {
                               <div className="flex items-center space-x-2 mb-2">
                                 <Checkbox
                                   checked={allSelected}
-                                  ref={(el) => {
-                                    if (el) el.indeterminate = someSelected;
-                                  }}
                                   onCheckedChange={() => handleCategoryToggle(category)}
+                                  className={someSelected ? "data-[state=checked]:bg-blue-600" : ""}
                                 />
                                 <Label className="font-semibold cursor-pointer" onClick={() => handleCategoryToggle(category)}>
                                   {category} ({selectedCount}/{categoryItemIds.length})
