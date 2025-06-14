@@ -101,7 +101,7 @@ const otherServices = {
 };
 
 const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "Digital Print", "Scanned"];
-const serviceTypeOptions = ["Pathology", "Other Services"];
+const serviceTypeOptions = ["Pathology", "Other Services", "Consult"];
 const labPartners = ["Lab Partner 1", "Lab Partner 2", "Lab Partner 3", "Lab Partner 4"];
 
 // QC Demographics and Flags
@@ -373,27 +373,44 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Page Selection */}
+                    {/* Page Thumbnails Grid for Selection */}
                     <div className="mb-4">
                       <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
-                      <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
-                        {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
-                          <Button
-                            key={pageNum}
-                            variant={selectedPages.includes(pageNum) ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageSelection(pageNum)}
-                            className="w-12 h-8"
-                          >
-                            {pageNum}
-                          </Button>
-                        ))}
-                      </div>
+                      <ScrollArea className="h-32">
+                        <div className="grid grid-cols-4 gap-2 p-2">
+                          {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
+                            <div
+                              key={pageNum}
+                              className={`relative cursor-pointer border-2 rounded-lg p-2 transition-all ${
+                                selectedPages.includes(pageNum) 
+                                  ? "border-blue-500 bg-blue-50" 
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                              onClick={() => handlePageSelection(pageNum)}
+                            >
+                              <div className="bg-white h-20 rounded border flex items-center justify-center">
+                                <FileText className="h-8 w-8 text-gray-400" />
+                              </div>
+                              <div className="text-xs text-center mt-1 font-medium">
+                                Page {pageNum}
+                              </div>
+                              {selectedPages.includes(pageNum) && (
+                                <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
                     </div>
 
+                    {/* Current Page Preview */}
                     <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4">
-                      <FileText className="h-16 w-16 text-gray-400" />
-                      <span className="ml-2 text-gray-500">PDF Preview - Page {currentPage}</span>
+                      <div className="text-center">
+                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                        <span className="text-gray-500">PDF Preview - Page {currentPage}</span>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -441,7 +458,7 @@ const Utilization = () => {
 
                 {/* Reference ID */}
                 <div>
-                  <Label htmlFor="reference-id">Reference ID *</Label>
+                  <Label htmlFor="reference-id">Reference ID</Label>
                   <Input
                     id="reference-id"
                     value={referenceId}
@@ -453,7 +470,7 @@ const Utilization = () => {
 
                 {/* Report Quality */}
                 <div>
-                  <Label className="text-base font-medium">Report Quality *</Label>
+                  <Label className="text-base font-medium">Report Quality</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {qualityOptions.map(quality => (
                       <Button
@@ -471,7 +488,7 @@ const Utilization = () => {
 
                 {/* Service Type */}
                 <div>
-                  <Label className="text-base font-medium">Service Type *</Label>
+                  <Label className="text-base font-medium">Service Type</Label>
                   <div className="flex gap-2 mt-2">
                     {serviceTypeOptions.map(type => (
                       <Button
