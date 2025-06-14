@@ -167,6 +167,11 @@ const Utilization = () => {
     return selectedQuality.length > 0 && selectedServiceType && selectedLabPartner;
   };
 
+  // Check if demographics verification has been started
+  const isDemographicsStarted = () => {
+    return eliminatedDemographics.length > 0;
+  };
+
   const getCurrentPdfData = () => {
     if (splitPdfs && selectedPdfForTagging) {
       return splitPdfs[selectedPdfForTagging];
@@ -796,7 +801,9 @@ const Utilization = () => {
                           {/* QC Step: Verify Demographics */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">Verify Demographics</Label>
-                            <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
+                            {!isDemographicsStarted() && (
+                              <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
+                            )}
                             <div className="space-y-2">
                               {qcDemographicItems.map(item => (
                                 <Button
