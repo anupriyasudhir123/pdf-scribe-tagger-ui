@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -1192,15 +1193,18 @@ const Utilization = () => {
                           </div>
                         </ScrollArea>
 
-                        {/* Comments for current page */}
-                        <div>
-                          <Label htmlFor="page-comments">Comments (Page {currentPage})</Label>
+                        {/* Comments for current page - Fixed alignment */}
+                        <div className="mt-4 space-y-2">
+                          <Label htmlFor="page-comments" className="text-sm font-medium">
+                            Comments (Page {currentPage})
+                          </Label>
                           <Textarea
                             id="page-comments"
                             placeholder="Enter any additional notes or observations for this page..."
                             value={getCurrentPageData()?.comments || ''}
                             onChange={(e) => updateCurrentPageData({comments: e.target.value})}
-                            rows={2}
+                            rows={3}
+                            className="w-full resize-none"
                           />
                         </div>
                       </div>
@@ -1324,3 +1328,4 @@ const Utilization = () => {
 };
 
 export default Utilization;
+
