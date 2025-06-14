@@ -153,6 +153,7 @@ const Utilization = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
+  const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
   
   // Page-wise utilization for non-split PDFs
   const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
@@ -519,16 +520,24 @@ const Utilization = () => {
       // Get all selected items from both PDFs
       Object.values(splitPdfs.pdf1.pageUtilization).forEach(pageData => {
         Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
-            allSelected.add(key);
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              allSelected.add(key);
+            }
           }
         });
       });
       
       Object.values(splitPdfs.pdf2.pageUtilization).forEach(pageData => {
         Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
-            allSelected.add(key);
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              allSelected.add(key);
+            }
           }
         });
       });
@@ -536,8 +545,12 @@ const Utilization = () => {
       // Get all selected items from main PDF
       Object.values(mainPageUtilization).forEach(pageData => {
         Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
-            allSelected.add(key);
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              allSelected.add(key);
+            }
           }
         });
       });
@@ -1184,7 +1197,7 @@ const Utilization = () => {
                           <Label htmlFor="page-comments" className="text-sm font-medium">
                             Comments (Page {currentPage})
                           </Label>
-                          <Textarea
+                          <textarea
                             id="page-comments"
                             placeholder="Enter any additional notes or observations for this page..."
                             value={getCurrentPageData()?.comments || ''}
