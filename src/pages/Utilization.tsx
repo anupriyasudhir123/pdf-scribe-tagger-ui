@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -167,6 +168,12 @@ const Utilization = () => {
     return selectedQuality.length > 0 && selectedServiceType && selectedLabPartner;
   };
 
+  // Check if at least one utilization item is selected
+  const hasUtilizationSelected = () => {
+    if (selectedServiceType === 'Consult') return true; // Consult doesn't need utilization items
+    return Object.values(selectedItems).some(Boolean);
+  };
+
   // Check if demographics verification has been started
   const isDemographicsStarted = () => {
     return eliminatedDemographics.length > 0;
@@ -327,16 +334,36 @@ const Utilization = () => {
     const key = `${category}-${item}`;
     const newSelected = !selectedItems[key];
     
-    setSelectedItems(prev => ({
-      ...prev,
+    const newSelectedItems = {
+      ...selectedItems,
       [key]: newSelected
-    }));
+    };
+    
+    setSelectedItems(newSelectedItems);
 
     // Auto-increment expected count for pathology items
     if (selectedServiceType === 'Pathology' && newSelected) {
       setExpectedCount(prev => prev + 1);
     } else if (selectedServiceType === 'Pathology' && !newSelected) {
       setExpectedCount(prev => Math.max(0, prev - 1));
+    }
+
+    // Auto-select parent category if any child is selected
+    const currentServices = selectedServiceType === 'Pathology' ? pathologyServices : otherServices;
+    const categoryItems = currentServices[category] || [];
+    const hasAnySelected = categoryItems.some(childItem => newSelectedItems[`${category}-${childItem}`]);
+    
+    // Update parent category selection based on children
+    if (hasAnySelected && !newSelectedItems[category]) {
+      setSelectedItems(prev => ({
+        ...prev,
+        [category]: true
+      }));
+    } else if (!hasAnySelected && newSelectedItems[category]) {
+      setSelectedItems(prev => ({
+        ...prev,
+        [category]: false
+      }));
     }
   };
 
@@ -346,6 +373,11 @@ const Utilization = () => {
     const allSelected = categoryItems.every(item => selectedItems[`${category}-${item}`]);
     
     const newSelectedItems = { ...selectedItems };
+    
+    // Toggle category header
+    newSelectedItems[category] = !allSelected;
+    
+    // Toggle all items in category
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
       const newValue = !allSelected;
@@ -414,18 +446,28 @@ const Utilization = () => {
   };
 
   const renderServiceItems = () => {
+    // For Consult, show a message that no utilization items are needed
+    if (selectedServiceType === 'Consult') {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <p>No utilization items required for Consult service type.</p>
+        </div>
+      );
+    }
+
     const services = filteredServices();
     
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
       const selectedCount = categoryItemIds.filter(id => selectedItems[id]).length;
+      const hasAnySelected = selectedCount > 0;
       const allSelected = selectedCount === categoryItemIds.length;
 
       return (
         <div key={category} className="mb-4">
           <div className="flex items-center space-x-2 mb-2">
             <Checkbox
-              checked={allSelected}
+              checked={hasAnySelected}
               onCheckedChange={() => handleCategoryToggle(category)}
             />
             <Label className="font-semibold cursor-pointer" onClick={() => handleCategoryToggle(category)}>
@@ -742,12 +784,12 @@ const Utilization = () => {
                 <Tabs defaultValue="utilization" className="h-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
-                      Utilization Tagging
+                      Utilization Tagging *
                       {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
-                    <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled()}>
+                    <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled() || !hasUtilizationSelected()}>
                       QC Verification
-                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
+                      {(!isMandatoryFieldsFilled() || !hasUtilizationSelected()) && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
                   </TabsList>
 
@@ -761,7 +803,7 @@ const Utilization = () => {
                       </div>
                     ) : (
                       <div className="space-y-4 h-full">
-                        {/* Search within Service Items */}
+                        {/* Search within Utilization Items */}
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                           <Input
@@ -777,8 +819,11 @@ const Utilization = () => {
                           {getCurrentPdfData().serviceType && (
                             <div>
                               <h3 className="font-medium mb-3">
-                                Utilization ({getCurrentPdfData().serviceType})
+                                Utilization ({getCurrentPdfData().serviceType}) *
                               </h3>
+                              {!hasUtilizationSelected() && getCurrentPdfData().serviceType !== 'Consult' && (
+                                <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
+                              )}
                               {renderServiceItems()}
                             </div>
                           )}
@@ -788,11 +833,14 @@ const Utilization = () => {
                   </TabsContent>
 
                   <TabsContent value="qc" className="flex-1">
-                    {!isMandatoryFieldsFilled() ? (
+                    {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
                           <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
-                          <p className="text-sm text-gray-400">Please fill all mandatory fields to continue</p>
+                          <p className="text-sm text-gray-400">
+                            {!isMandatoryFieldsFilled() && "Please fill all mandatory fields to continue"}
+                            {isMandatoryFieldsFilled() && !hasUtilizationSelected() && "Please select at least one utilization item"}
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -802,7 +850,7 @@ const Utilization = () => {
                           <div>
                             <Label className="text-base font-medium mb-2 block">Verify Demographics *</Label>
                             {!isDemographicsStarted() && (
-                              <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
+                              <Label className="text-sm text-gray-600 mb-3 block">Click items to eliminate from verification</Label>
                             )}
                             <div className="space-y-2">
                               {qcDemographicItems.map(item => (
