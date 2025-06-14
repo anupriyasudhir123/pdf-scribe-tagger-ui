@@ -8,10 +8,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Service data structure
+// Service data structure for Pathology
 const pathologyServices = {
   "Complete Blood Count (CBC)": [
     "Absolute Leucocyte Count", "BASOPHILS - ABSOLUTE COUNT", "Differential Leucocyte Count (DLC)",
@@ -82,8 +83,8 @@ const pathologyServices = {
     "CALCIUM", "Chloride", "PHOSPHORUS", "POTASSIUM", "Sodium"
   ],
   "Diabetes Profile": [
-    "Estimated Average Glucose (EAG)", "FASTING BLOOD SUGAR (GLUCOSE)", "GLYCATED HEMOGLOBIN (HbA1c)",
-    "HbA1c", "Mean Plasma Glucose Level", "MICROALBUMIN", "Postprandial Blood Glucose/Glucose-PP",
+    "Estimated Average Glucose (EAG)", "FASTING BLOOD SUGAR (GLUCOSE)", "GLYCATED HEMOGLOBIN",
+    "Mean Plasma Glucose Level", "MICROALBUMIN", "Postprandial Blood Glucose/Glucose-PP",
     "Random Blood Sugar/Glucose (RBS)", "URINARY GLUCOSE"
   ],
   "Rheumatoid Factor (RF)": ["RHEUMATOID FACTOR (RF)"],
@@ -101,33 +102,45 @@ const otherServices = {
 };
 
 const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "Digital Print", "Scanned"];
-const serviceTypeOptions = ["Pathology", "Other Services", "Consult"];
-const qcFlags = ["Pending Radiology", "Incorrect Demographics", "Partial Reports"];
-const partialReportOptions = ["Radiology", "Cardiology"];
+const serviceTypeOptions = ["Pathology", "Other Services"];
 const labPartners = ["Lab Partner 1", "Lab Partner 2", "Lab Partner 3", "Lab Partner 4"];
 
+// QC elimination items
+const qcDemographicItems = ["Name Mismatch", "Age Incorrect", "Gender Wrong", "Address Error", "Phone Number Error"];
+const qcFlagItems = ["Report Date Error", "Doctor Name Missing", "Lab Values Out of Range", "Units Incorrect"];
+
+interface FileData {
+  name: string;
+  file: File;
+  pages: number;
+}
+
 const Utilization = () => {
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedPages, setSelectedPages] = useState<number[]>([]);
+  const [splitPdfs, setSplitPdfs] = useState<{pdf1: number[], pdf2: number[]} | null>(null);
   const [referenceId, setReferenceId] = useState('');
-  const [selectedQuality, setSelectedQuality] = useState([]);
+  const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedServiceType, setSelectedServiceType] = useState('');
-  const [selectedItems, setSelectedItems] = useState({});
+  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [expectedCount, setExpectedCount] = useState('');
-  const [selectedQcFlags, setSelectedQcFlags] = useState([]);
-  const [selectedPartialReports, setSelectedPartialReports] = useState([]);
+  const [expectedCount, setExpectedCount] = useState(0);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
   const [customLabPartner, setCustomLabPartner] = useState('');
   const [demographics, setDemographics] = useState('');
-  const [uhidFlag, setUhidFlag] = useState(false);
   const [comments, setComments] = useState('');
+  const [eliminatedDemographics, setEliminatedDemographics] = useState<string[]>([]);
+  const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
+  const [qcStatus, setQcStatus] = useState('');
+  const [pendingRadiology, setPendingRadiology] = useState(false);
+  const [pendingCardiology, setPendingCardiology] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = (event) => {
-    const files = Array.from(event.target.files);
-    const newFiles = files.map(file => ({
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const newFiles: FileData[] = files.map(file => ({
       name: file.name,
       file: file,
       pages: Math.floor(Math.random() * 10) + 1 // Mock page count
@@ -143,7 +156,37 @@ const Utilization = () => {
     });
   };
 
-  const handleQualityChange = (quality) => {
+  const handlePageSelection = (pageNum: number) => {
+    setSelectedPages(prev => 
+      prev.includes(pageNum) 
+        ? prev.filter(p => p !== pageNum)
+        : [...prev, pageNum]
+    );
+  };
+
+  const handleSplitPdf = () => {
+    if (selectedPages.length === 0) {
+      toast({
+        title: "No Pages Selected",
+        description: "Please select pages to split",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const allPages = Array.from({length: totalPages}, (_, i) => i + 1);
+    const pdf1 = selectedPages.sort((a, b) => a - b);
+    const pdf2 = allPages.filter(p => !selectedPages.includes(p));
+    
+    setSplitPdfs({ pdf1, pdf2 });
+    setSelectedPages([]);
+    toast({
+      title: "PDF Split Successfully",
+      description: `Split into PDF 1 (${pdf1.length} pages) and PDF 2 (${pdf2.length} pages)`,
+    });
+  };
+
+  const handleQualityChange = (quality: string) => {
     setSelectedQuality(prev => 
       prev.includes(quality) 
         ? prev.filter(q => q !== quality)
@@ -151,37 +194,84 @@ const Utilization = () => {
     );
   };
 
-  const handleServiceItemToggle = (category, item) => {
+  const handleServiceItemToggle = (category: string, item: string) => {
     const key = `${category}-${item}`;
+    const newSelected = !selectedItems[key];
+    
     setSelectedItems(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: newSelected
     }));
+
+    // Auto-increment expected count for pathology items
+    if (selectedServiceType === 'Pathology' && newSelected) {
+      setExpectedCount(prev => prev + 1);
+    } else if (selectedServiceType === 'Pathology' && !newSelected) {
+      setExpectedCount(prev => Math.max(0, prev - 1));
+    }
   };
 
-  const handleCategoryToggle = (category) => {
+  const handleCategoryToggle = (category: string) => {
     const currentServices = selectedServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     const allSelected = categoryItems.every(item => selectedItems[`${category}-${item}`]);
     
     const newSelectedItems = { ...selectedItems };
     categoryItems.forEach(item => {
-      newSelectedItems[`${category}-${item}`] = !allSelected;
+      const key = `${category}-${item}`;
+      const newValue = !allSelected;
+      newSelectedItems[key] = newValue;
+      
+      // Update expected count for pathology
+      if (selectedServiceType === 'Pathology') {
+        if (newValue && !selectedItems[key]) {
+          setExpectedCount(prev => prev + 1);
+        } else if (!newValue && selectedItems[key]) {
+          setExpectedCount(prev => Math.max(0, prev - 1));
+        }
+      }
     });
     setSelectedItems(newSelectedItems);
   };
 
-  const handleKeyPress = (event, action) => {
+  const handleEliminateItem = (item: string, type: 'demographics' | 'flags') => {
+    if (type === 'demographics') {
+      setEliminatedDemographics(prev => 
+        prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
+      );
+    } else {
+      setEliminatedFlags(prev => 
+        prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
+      );
+    }
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent, action: () => void) => {
     if (event.key === 'Enter') {
       action();
     }
+  };
+
+  const handleDelete = () => {
+    setUploadedFiles([]);
+    setReferenceId('');
+    setSelectedQuality([]);
+    setSelectedServiceType('');
+    setSelectedItems({});
+    setExpectedCount(0);
+    setSplitPdfs(null);
+    setSelectedPages([]);
+    toast({
+      title: "Data Cleared",
+      description: "All data has been cleared",
+    });
   };
 
   const filteredServices = () => {
     const currentServices = selectedServiceType === 'Pathology' ? pathologyServices : otherServices;
     if (!searchTerm) return currentServices;
     
-    const filtered = {};
+    const filtered: Record<string, string[]> = {};
     Object.entries(currentServices).forEach(([category, items]) => {
       const filteredItems = items.filter(item => 
         item.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -194,13 +284,6 @@ const Utilization = () => {
     return filtered;
   };
 
-  const handleSplitPdf = () => {
-    toast({
-      title: "PDF Split",
-      description: "PDF has been split successfully",
-    });
-  };
-
   const renderServiceItems = () => {
     const services = filteredServices();
     
@@ -208,7 +291,6 @@ const Utilization = () => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
       const selectedCount = categoryItemIds.filter(id => selectedItems[id]).length;
       const allSelected = selectedCount === categoryItemIds.length;
-      const someSelected = selectedCount > 0 && selectedCount < categoryItemIds.length;
 
       return (
         <div key={category} className="mb-4">
@@ -216,7 +298,6 @@ const Utilization = () => {
             <Checkbox
               checked={allSelected}
               onCheckedChange={() => handleCategoryToggle(category)}
-              className={someSelected ? "data-[state=checked]:bg-blue-600" : ""}
             />
             <Label className="font-semibold cursor-pointer" onClick={() => handleCategoryToggle(category)}>
               {category} ({selectedCount}/{categoryItemIds.length})
@@ -244,19 +325,7 @@ const Utilization = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Utilization</h1>
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search Reference IDs or service items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => handleKeyPress(e, () => {})}
-                className="pl-10"
-              />
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization</h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
@@ -291,27 +360,15 @@ const Utilization = () => {
                   </label>
                 </div>
 
-                {/* Reference ID */}
-                <div>
-                  <Label htmlFor="reference-id">Reference ID *</Label>
-                  <Input
-                    id="reference-id"
-                    value={referenceId}
-                    onChange={(e) => setReferenceId(e.target.value)}
-                    onKeyPress={(e) => handleKeyPress(e, () => {})}
-                    placeholder="Auto-filled from PDF name"
-                  />
-                </div>
-
                 {/* PDF Preview */}
                 {uploadedFiles.length > 0 && (
                   <div className="border rounded-lg p-4 flex-1">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-medium">PDF Preview</h3>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={handleSplitPdf}>
+                        <Button variant="outline" size="sm" onClick={handleSplitPdf} disabled={selectedPages.length === 0}>
                           <Split className="h-4 w-4 mr-1" />
-                          Split
+                          Split Selected
                         </Button>
                         <Button variant="outline" size="sm">
                           <Download className="h-4 w-4 mr-1" />
@@ -319,10 +376,30 @@ const Utilization = () => {
                         </Button>
                       </div>
                     </div>
-                    <div className="bg-gray-100 h-64 rounded flex items-center justify-center mb-4">
+
+                    {/* Page Selection */}
+                    <div className="mb-4">
+                      <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
+                      <div className="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+                        {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
+                          <Button
+                            key={pageNum}
+                            variant={selectedPages.includes(pageNum) ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageSelection(pageNum)}
+                            className="w-12 h-8"
+                          >
+                            {pageNum}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4">
                       <FileText className="h-16 w-16 text-gray-400" />
                       <span className="ml-2 text-gray-500">PDF Preview - Page {currentPage}</span>
                     </div>
+
                     <div className="flex items-center justify-between">
                       <Button
                         variant="outline"
@@ -342,21 +419,56 @@ const Utilization = () => {
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
+
+                    {/* Split PDFs Preview */}
+                    {splitPdfs && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h4 className="font-medium mb-2">Split PDFs Preview:</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium">PDF 1 (Pages: {splitPdfs.pdf1.join(', ')})</Label>
+                            <div className="bg-white h-20 rounded border flex items-center justify-center">
+                              <FileText className="h-8 w-8 text-blue-500" />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium">PDF 2 (Pages: {splitPdfs.pdf2.join(', ')})</Label>
+                            <div className="bg-white h-20 rounded border flex items-center justify-center">
+                              <FileText className="h-8 w-8 text-green-500" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* Reference ID */}
+                <div>
+                  <Label htmlFor="reference-id">Reference ID *</Label>
+                  <Input
+                    id="reference-id"
+                    value={referenceId}
+                    onChange={(e) => setReferenceId(e.target.value)}
+                    onKeyPress={(e) => handleKeyPress(e, () => {})}
+                    placeholder="Auto-filled from PDF name"
+                  />
+                </div>
 
                 {/* Report Quality Tagging */}
                 <div>
                   <Label className="text-base font-medium">Report Quality * (Required)</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {qualityOptions.map(quality => (
-                      <div key={quality} className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selectedQuality.includes(quality)}
-                          onCheckedChange={() => handleQualityChange(quality)}
-                        />
-                        <Label className="text-sm">{quality}</Label>
-                      </div>
+                      <Button
+                        key={quality}
+                        variant={selectedQuality.includes(quality) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleQualityChange(quality)}
+                        className="justify-start"
+                      >
+                        {quality}
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -364,16 +476,17 @@ const Utilization = () => {
                 {/* Service Type */}
                 <div>
                   <Label className="text-base font-medium">Service Type * (Required)</Label>
-                  <Select value={selectedServiceType} onValueChange={setSelectedServiceType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select service type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {serviceTypeOptions.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 mt-2">
+                    {serviceTypeOptions.map(type => (
+                      <Button
+                        key={type}
+                        variant={selectedServiceType === type ? "default" : "outline"}
+                        onClick={() => setSelectedServiceType(type)}
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Lab Partner */}
@@ -407,119 +520,170 @@ const Utilization = () => {
                   <Input
                     id="expected-count"
                     type="number"
-                    value={expectedCount}
-                    onChange={(e) => setExpectedCount(e.target.value)}
+                    value={expectedCount.toString()}
+                    onChange={(e) => setExpectedCount(Number(e.target.value))}
                     onKeyPress={(e) => handleKeyPress(e, () => {})}
-                    placeholder="Enter expected count"
+                    placeholder="Auto-calculated for pathology"
+                    readOnly={selectedServiceType === 'Pathology'}
                   />
                 </div>
+
+                {/* Delete Button */}
+                <Button variant="destructive" onClick={handleDelete} className="w-full">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </Button>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Side - Service Item Tagging and QC */}
+          {/* Right Side - Utilization and QC Tabs */}
           <div className="space-y-4">
             <Card className="h-full flex flex-col">
               <CardHeader>
-                <CardTitle>Service Item Tagging & QC</CardTitle>
+                <CardTitle>Utilization & QC Verification</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <ScrollArea className="h-[calc(100vh-400px)]">
-                  {/* Service Items */}
-                  {selectedServiceType && (
-                    <div className="mb-6">
-                      <h3 className="font-medium mb-3">
-                        Page {currentPage} - Service Items ({selectedServiceType})
-                      </h3>
-                      {renderServiceItems()}
-                    </div>
-                  )}
+              <CardContent className="flex-1">
+                <Tabs defaultValue="utilization" className="h-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="utilization">Service Item Tagging</TabsTrigger>
+                    <TabsTrigger value="qc">QC Verification</TabsTrigger>
+                  </TabsList>
 
-                  {/* Demographics Verification */}
-                  <div className="mb-6">
-                    <Label className="text-base font-medium mb-2 block">Demographics Verification</Label>
-                    <Textarea
-                      placeholder="Enter demographics details..."
-                      value={demographics}
-                      onChange={(e) => setDemographics(e.target.value)}
-                      className="mb-2"
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={uhidFlag}
-                        onCheckedChange={setUhidFlag}
-                      />
-                      <Label className="text-sm">Flag for incorrect UHID</Label>
-                    </div>
-                  </div>
-
-                  {/* QC Tracker */}
-                  <div className="mb-6">
-                    <Label className="text-base font-medium mb-2 block">QC Tracker * (Required)</Label>
-                    {qcFlags.map(flag => (
-                      <div key={flag} className="flex items-center space-x-2 mb-2">
-                        <Checkbox
-                          checked={selectedQcFlags.includes(flag)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedQcFlags(prev => [...prev, flag]);
-                            } else {
-                              setSelectedQcFlags(prev => prev.filter(f => f !== flag));
-                            }
-                          }}
+                  <TabsContent value="utilization" className="flex-1">
+                    <div className="space-y-4 h-full">
+                      {/* Search within Service Items */}
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          placeholder="Search service items..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onKeyPress={(e) => handleKeyPress(e, () => {})}
+                          className="pl-10"
                         />
-                        <Label className="text-sm">{flag}</Label>
                       </div>
-                    ))}
-                    
-                    {/* Partial Reports Options */}
-                    {selectedQcFlags.includes('Partial Reports') && (
-                      <div className="ml-6 mt-2">
-                        <Label className="text-sm font-medium mb-2 block">Partial Report Type:</Label>
-                        {partialReportOptions.map(option => (
-                          <div key={option} className="flex items-center space-x-2 mb-1">
-                            <Checkbox
-                              checked={selectedPartialReports.includes(option)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedPartialReports(prev => [...prev, option]);
-                                } else {
-                                  setSelectedPartialReports(prev => prev.filter(o => o !== option));
-                                }
-                              }}
-                            />
-                            <Label className="text-sm">{option}</Label>
+
+                      <ScrollArea className="h-[calc(100vh-500px)]">
+                        {selectedServiceType && (
+                          <div>
+                            <h3 className="font-medium mb-3">
+                              Service Items ({selectedServiceType})
+                            </h3>
+                            {renderServiceItems()}
                           </div>
-                        ))}
+                        )}
+                      </ScrollArea>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="qc" className="flex-1">
+                    <ScrollArea className="h-[calc(100vh-500px)]">
+                      <div className="space-y-6">
+                        {/* Demographics Verification */}
+                        <div>
+                          <Label className="text-base font-medium mb-2 block">QC - Verify Demographics (Click to Eliminate)</Label>
+                          <div className="space-y-2">
+                            {qcDemographicItems.map(item => (
+                              <Button
+                                key={item}
+                                variant={eliminatedDemographics.includes(item) ? "destructive" : "outline"}
+                                size="sm"
+                                onClick={() => handleEliminateItem(item, 'demographics')}
+                                className="mr-2 mb-2"
+                              >
+                                {eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                {item}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* QC Flags */}
+                        <div>
+                          <Label className="text-base font-medium mb-2 block">QC Flags (Click to Eliminate)</Label>
+                          <div className="space-y-2">
+                            {qcFlagItems.map(item => (
+                              <Button
+                                key={item}
+                                variant={eliminatedFlags.includes(item) ? "destructive" : "outline"}
+                                size="sm"
+                                onClick={() => handleEliminateItem(item, 'flags')}
+                                className="mr-2 mb-2"
+                              >
+                                {eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                {item}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Pending Items */}
+                        <div>
+                          <Label className="text-base font-medium mb-2 block">Pending Items</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={pendingRadiology}
+                                onCheckedChange={(checked) => setPendingRadiology(checked === true)}
+                              />
+                              <Label>Pending Radiology</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={pendingCardiology}
+                                onCheckedChange={(checked) => setPendingCardiology(checked === true)}
+                              />
+                              <Label>Pending Cardiology</Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Overall QC Status */}
+                        <div>
+                          <Label htmlFor="qc-status">Overall QC Status</Label>
+                          <Select value={qcStatus} onValueChange={setQcStatus}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select QC status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="passed">Passed</SelectItem>
+                              <SelectItem value="failed">Failed</SelectItem>
+                              <SelectItem value="pending">Pending Review</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Comments */}
+                        <div>
+                          <Label htmlFor="comments">Comments</Label>
+                          <Textarea
+                            id="comments"
+                            placeholder="Enter any additional comments..."
+                            value={comments}
+                            onChange={(e) => setComments(e.target.value)}
+                          />
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
 
-                  {/* Comments */}
-                  <div>
-                    <Label htmlFor="comments">Comments</Label>
-                    <Textarea
-                      id="comments"
-                      placeholder="Enter any additional comments..."
-                      value={comments}
-                      onChange={(e) => setComments(e.target.value)}
-                    />
+                {/* Auto-Save Indicator */}
+                <div className="pt-4 border-t mt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Auto-save enabled</span>
+                    <Button 
+                      onClick={() => {
+                        toast({
+                          title: "Data Saved",
+                          description: "All data has been saved successfully",
+                        });
+                      }}
+                    >
+                      Save Manually
+                    </Button>
                   </div>
-                </ScrollArea>
-
-                {/* Save Button */}
-                <div className="pt-4 border-t">
-                  <Button 
-                    className="w-full" 
-                    onClick={() => {
-                      toast({
-                        title: "Data Saved",
-                        description: "All tagging and QC data has been saved for this Reference ID",
-                      });
-                    }}
-                  >
-                    Save Reference ID Data
-                  </Button>
                 </div>
               </CardContent>
             </Card>
