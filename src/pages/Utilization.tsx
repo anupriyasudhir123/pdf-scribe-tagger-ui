@@ -158,7 +158,6 @@ const Utilization = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
-  const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
   
   // Page-wise utilization for non-split PDFs
   const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
@@ -1289,7 +1288,7 @@ const Utilization = () => {
                             </Select>
                           </div>
 
-                          {/* Comments for QC - Now in QC tab */}
+                          {/* Comments for QC - Only in QC tab */}
                           <div>
                             <Label htmlFor="qc-comments" className="text-base font-medium mb-2 block">
                               Comments {splitPdfs && selectedPdfForTagging ? `(${selectedPdfForTagging.toUpperCase()})` : '(PDF)'}
