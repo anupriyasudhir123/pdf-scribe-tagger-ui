@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -118,14 +117,12 @@ interface PageUtilization {
   serviceType: string;
   selectedItems: Record<string, boolean>;
   expectedCount: number;
-  comments: string;
 }
 
 interface QCVerification {
   eliminatedDemographics: string[];
   eliminatedFlags: string[];
   qcStatus: string;
-  comments: string;  // Add comments to QC verification
 }
 
 interface SplitPdfData {
@@ -135,7 +132,6 @@ interface SplitPdfData {
     serviceType: string;
     expectedCount: number;
     selectedItems: Record<string, boolean>;
-    comments: string;
     pageUtilization: Record<number, PageUtilization>;
     qcVerification: QCVerification;
   };
@@ -145,7 +141,6 @@ interface SplitPdfData {
     serviceType: string;
     expectedCount: number;
     selectedItems: Record<string, boolean>;
-    comments: string;
     pageUtilization: Record<number, PageUtilization>;
     qcVerification: QCVerification;
   };
@@ -167,8 +162,7 @@ const Utilization = () => {
   const [mainQCVerification, setMainQCVerification] = useState<QCVerification>({
     eliminatedDemographics: [],
     eliminatedFlags: [],
-    qcStatus: '',
-    comments: ''  // Add comments field
+    qcStatus: ''
   });
   
   // Shared fields between both PDFs
@@ -179,7 +173,6 @@ const Utilization = () => {
   // Main PDF data (for PDF-level info when not split)
   const [referenceId, setReferenceId] = useState('');
   const [mainServiceType, setMainServiceType] = useState('');
-  const [mainComments, setMainComments] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
@@ -299,8 +292,7 @@ const Utilization = () => {
         const currentPageData = currentPdf.pageUtilization[currentPage] || {
           serviceType: currentPdf.serviceType,
           selectedItems: {},
-          expectedCount: 0,
-          comments: ''
+          expectedCount: 0
         };
         
         return {
@@ -322,8 +314,7 @@ const Utilization = () => {
         const currentPageData = prev[currentPage] || {
           serviceType: mainServiceType,
           selectedItems: {},
-          expectedCount: 0,
-          comments: ''
+          expectedCount: 0
         };
         
         return {
@@ -390,12 +381,10 @@ const Utilization = () => {
     // Reset form data for new file
     setMainServiceType('');
     setMainPageUtilization({});
-    setMainComments('');
     setMainQCVerification({
       eliminatedDemographics: [],
       eliminatedFlags: [],
-      qcStatus: '',
-      comments: ''  // Add comments field
+      qcStatus: ''
     });
   };
 
@@ -428,13 +417,11 @@ const Utilization = () => {
         serviceType: '',
         expectedCount: 0,
         selectedItems: {},
-        comments: '',
         pageUtilization: {},
         qcVerification: {
           eliminatedDemographics: [],
           eliminatedFlags: [],
-          qcStatus: '',
-          comments: ''  // Add comments field
+          qcStatus: ''
         }
       },
       pdf2: {
@@ -443,13 +430,11 @@ const Utilization = () => {
         serviceType: '',
         expectedCount: 0,
         selectedItems: {},
-        comments: '',
         pageUtilization: {},
         qcVerification: {
           eliminatedDemographics: [],
           eliminatedFlags: [],
-          qcStatus: '',
-          comments: ''  // Add comments field
+          qcStatus: ''
         }
       }
     };
@@ -461,12 +446,10 @@ const Utilization = () => {
     // Clear main data except shared fields
     setMainServiceType('');
     setMainPageUtilization({});
-    setMainComments('');
     setMainQCVerification({
       eliminatedDemographics: [],
       eliminatedFlags: [],
-      qcStatus: '',
-      comments: ''  // Add comments field
+      qcStatus: ''
     });
     
     toast({
@@ -688,8 +671,7 @@ const Utilization = () => {
     setMainQCVerification({
       eliminatedDemographics: [],
       eliminatedFlags: [],
-      qcStatus: '',
-      comments: ''  // Add comments field
+      qcStatus: ''
     });
     toast({
       title: "Data Cleared",
@@ -1287,21 +1269,6 @@ const Utilization = () => {
                                 <SelectItem value="pending">Pending Review</SelectItem>
                               </SelectContent>
                             </Select>
-                          </div>
-
-                          {/* Comments for QC - Only in QC tab */}
-                          <div>
-                            <Label htmlFor="qc-comments" className="text-base font-medium mb-2 block">
-                              Comments {splitPdfs && selectedPdfForTagging ? `(${selectedPdfForTagging.toUpperCase()})` : '(PDF)'}
-                            </Label>
-                            <Textarea
-                              id="qc-comments"
-                              placeholder="Enter any additional notes or observations for QC verification..."
-                              value={currentQC.comments || ''}
-                              onChange={(e) => updateCurrentQCVerification({comments: e.target.value})}
-                              rows={3}
-                              className="w-full resize-none"
-                            />
                           </div>
 
                           {/* QC Summary */}
