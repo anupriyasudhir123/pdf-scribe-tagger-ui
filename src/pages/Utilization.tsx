@@ -742,7 +742,7 @@ const Utilization = () => {
                 <Tabs defaultValue="utilization" className="h-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
-                      Service Item Tagging
+                      Utilization Tagging
                       {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
                     <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled()}>
@@ -765,7 +765,7 @@ const Utilization = () => {
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                           <Input
-                            placeholder="Search service items..."
+                            placeholder="Search utilization items..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyPress={(e) => handleKeyPress(e, () => {})}
@@ -777,7 +777,7 @@ const Utilization = () => {
                           {getCurrentPdfData().serviceType && (
                             <div>
                               <h3 className="font-medium mb-3">
-                                Service Items ({getCurrentPdfData().serviceType})
+                                Utilization ({getCurrentPdfData().serviceType})
                               </h3>
                               {renderServiceItems()}
                             </div>
@@ -800,7 +800,7 @@ const Utilization = () => {
                         <div className="space-y-6">
                           {/* QC Step: Verify Demographics */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">Verify Demographics</Label>
+                            <Label className="text-base font-medium mb-2 block">Verify Demographics *</Label>
                             {!isDemographicsStarted() && (
                               <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
                             )}
@@ -822,7 +822,7 @@ const Utilization = () => {
 
                           {/* QC Flags */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">QC Flags</Label>
+                            <Label className="text-base font-medium mb-2 block">QC Flags *</Label>
                             <div className="space-y-2">
                               {qcFlagItems.map(item => (
                                 <Button
@@ -841,7 +841,7 @@ const Utilization = () => {
 
                           {/* QC Tracker Status */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">QC Status</Label>
+                            <Label className="text-base font-medium mb-2 block">QC Status *</Label>
                             <Label htmlFor="qc-status">Overall QC Status</Label>
                             <Select value={qcStatus} onValueChange={setQcStatus}>
                               <SelectTrigger>
