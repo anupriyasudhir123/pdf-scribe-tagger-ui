@@ -1191,21 +1191,6 @@ const Utilization = () => {
                             {renderServiceItems()}
                           </div>
                         </ScrollArea>
-
-                        {/* Comments for current page - Fixed alignment */}
-                        <div className="mt-4 space-y-2">
-                          <Label htmlFor="page-comments" className="text-sm font-medium">
-                            Comments (Page {currentPage})
-                          </Label>
-                          <textarea
-                            id="page-comments"
-                            placeholder="Enter any additional notes or observations for this page..."
-                            value={getCurrentPageData()?.comments || ''}
-                            onChange={(e) => updateCurrentPageData({comments: e.target.value})}
-                            rows={3}
-                            className="w-full resize-none"
-                          />
-                        </div>
                       </div>
                     )}
                   </TabsContent>
