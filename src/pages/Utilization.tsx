@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -970,14 +969,14 @@ const Utilization = () => {
                         <ScrollArea className="flex-1">
                           <div>
                             <h3 className="font-medium mb-3">
-                              Utilization ({getCurrentPdfData().serviceType}) *
-                              {isPageWiseTagging && (
+                              Utilization ({getCurrentPdfData().serviceType || 'Select Service Type'}) *
+                              {isPageWiseTagging && getCurrentPdfData().serviceType && (
                                 <span className="text-sm font-normal text-blue-600 block">
                                   Page {currentPage}
                                 </span>
                               )}
                             </h3>
-                            {!hasUtilizationSelected() && getCurrentPdfData().serviceType !== 'Consult' && (
+                            {!hasUtilizationSelected() && getCurrentPdfData().serviceType && getCurrentPdfData().serviceType !== 'Consult' && (
                               <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
                             )}
                             {renderServiceItems()}
