@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -119,10 +118,7 @@ interface SplitPdfData {
   pdf1: {
     pages: number[];
     referenceId: string;
-    quality: string[];
     serviceType: string;
-    labPartner: string;
-    customLabPartner: string;
     expectedCount: number;
     selectedItems: Record<string, boolean>;
     comments: string;
@@ -130,10 +126,7 @@ interface SplitPdfData {
   pdf2: {
     pages: number[];
     referenceId: string;
-    quality: string[];
     serviceType: string;
-    labPartner: string;
-    customLabPartner: string;
     expectedCount: number;
     selectedItems: Record<string, boolean>;
     comments: string;
@@ -148,15 +141,17 @@ const Utilization = () => {
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
   const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
   
+  // Shared fields between both PDFs
+  const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
+  const [selectedLabPartner, setSelectedLabPartner] = useState('');
+  const [customLabPartner, setCustomLabPartner] = useState('');
+  
   // Current active data (either main or selected split PDF)
   const [referenceId, setReferenceId] = useState('');
-  const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedServiceType, setSelectedServiceType] = useState('');
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [expectedCount, setExpectedCount] = useState(0);
-  const [selectedLabPartner, setSelectedLabPartner] = useState('');
-  const [customLabPartner, setCustomLabPartner] = useState('');
   const [comments, setComments] = useState('');
   const [eliminatedDemographics, setEliminatedDemographics] = useState<string[]>([]);
   const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
@@ -185,10 +180,7 @@ const Utilization = () => {
     }
     return {
       referenceId,
-      quality: selectedQuality,
       serviceType: selectedServiceType,
-      labPartner: selectedLabPartner,
-      customLabPartner,
       expectedCount,
       selectedItems,
       comments
@@ -209,10 +201,7 @@ const Utilization = () => {
       Object.entries(updates).forEach(([key, value]) => {
         switch (key) {
           case 'referenceId': setReferenceId(value); break;
-          case 'quality': setSelectedQuality(value); break;
           case 'serviceType': setSelectedServiceType(value); break;
-          case 'labPartner': setSelectedLabPartner(value); break;
-          case 'customLabPartner': setCustomLabPartner(value); break;
           case 'expectedCount': setExpectedCount(value); break;
           case 'selectedItems': setSelectedItems(value); break;
           case 'comments': setComments(value); break;
@@ -265,10 +254,7 @@ const Utilization = () => {
       pdf1: {
         pages: pdf1Pages,
         referenceId: referenceId + '_part1',
-        quality: [],
         serviceType: '',
-        labPartner: '',
-        customLabPartner: '',
         expectedCount: 0,
         selectedItems: {},
         comments: ''
@@ -276,10 +262,7 @@ const Utilization = () => {
       pdf2: {
         pages: pdf2Pages,
         referenceId: referenceId + '_part2',
-        quality: [],
         serviceType: '',
-        labPartner: '',
-        customLabPartner: '',
         expectedCount: 0,
         selectedItems: {},
         comments: ''
@@ -290,11 +273,8 @@ const Utilization = () => {
     setSelectedPages([]);
     setSelectedPdfForTagging('pdf1'); // Default to first PDF
     
-    // Clear main data
-    setSelectedQuality([]);
+    // Clear main data except shared fields (quality and lab partner remain)
     setSelectedServiceType('');
-    setSelectedLabPartner('');
-    setCustomLabPartner('');
     setExpectedCount(0);
     setSelectedItems({});
     setComments('');
@@ -311,12 +291,9 @@ const Utilization = () => {
     setSelectedPdfForTagging(pdfKey);
     const pdfData = splitPdfs[pdfKey];
     
-    // Load PDF-specific data
+    // Load PDF-specific data (quality and lab partner remain shared)
     setReferenceId(pdfData.referenceId);
-    setSelectedQuality(pdfData.quality);
     setSelectedServiceType(pdfData.serviceType);
-    setSelectedLabPartner(pdfData.labPartner);
-    setCustomLabPartner(pdfData.customLabPartner);
     setExpectedCount(pdfData.expectedCount);
     setSelectedItems(pdfData.selectedItems);
     setComments(pdfData.comments);
@@ -422,6 +399,8 @@ const Utilization = () => {
     setExpectedCount(0);
     setSplitPdfs(null);
     setSelectedPages([]);
+    setSelectedLabPartner('');
+    setCustomLabPartner('');
     toast({
       title: "Data Cleared",
       description: "All data has been cleared",
@@ -563,7 +542,7 @@ const Utilization = () => {
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
                             >
-                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center">
+                              <div className="bg-white h-24 rounded border flex items-center justify-center">
                                 <FileText className="h-8 w-8 text-gray-400 mb-1" />
                                 <div className="text-xs text-gray-500">Page {pageNum}</div>
                                 <div className="w-full h-2 bg-gray-100 mt-2 rounded"></div>
@@ -651,6 +630,9 @@ const Utilization = () => {
                             )}
                           </div>
                         </div>
+                        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+                          <strong>Note:</strong> Report Quality and Executing Lab Partner are shared between both PDFs
+                        </div>
                       </div>
                     )}
                   </div>
@@ -668,37 +650,28 @@ const Utilization = () => {
                   />
                 </div>
 
-                {/* Report Quality - Mandatory */}
+                {/* Report Quality - Shared between PDFs */}
                 <div>
-                  <Label className="text-base font-medium">Report Quality *</Label>
+                  <Label className="text-base font-medium">Report Quality * {splitPdfs && <span className="text-sm text-blue-600">(Shared)</span>}</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {qualityOptions.map(quality => {
-                      const currentData = getCurrentPdfData();
-                      return (
-                        <Button
-                          key={quality}
-                          variant={currentData.quality.includes(quality) ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            const currentQuality = currentData.quality;
-                            const newQuality = currentQuality.includes(quality) 
-                              ? currentQuality.filter(q => q !== quality)
-                              : [...currentQuality, quality];
-                            updateCurrentPdfData({quality: newQuality});
-                          }}
-                          className="justify-start"
-                        >
-                          {quality}
-                        </Button>
-                      );
-                    })}
+                    {qualityOptions.map(quality => (
+                      <Button
+                        key={quality}
+                        variant={selectedQuality.includes(quality) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleQualityChange(quality)}
+                        className="justify-start"
+                      >
+                        {quality}
+                      </Button>
+                    ))}
                   </div>
-                  {getCurrentPdfData().quality.length === 0 && (
+                  {selectedQuality.length === 0 && (
                     <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>
                   )}
                 </div>
 
-                {/* Service Type - Mandatory */}
+                {/* Service Type */}
                 <div>
                   <Label className="text-base font-medium">Service Type *</Label>
                   <div className="flex gap-2 mt-2">
@@ -720,12 +693,12 @@ const Utilization = () => {
                   )}
                 </div>
 
-                {/* Lab Partner - Mandatory */}
+                {/* Lab Partner - Shared between PDFs */}
                 <div>
-                  <Label>Executing Lab Partner *</Label>
+                  <Label>Executing Lab Partner * {splitPdfs && <span className="text-sm text-blue-600">(Shared)</span>}</Label>
                   <Select 
-                    value={getCurrentPdfData().labPartner} 
-                    onValueChange={(value) => updateCurrentPdfData({labPartner: value})}
+                    value={selectedLabPartner} 
+                    onValueChange={(value) => setSelectedLabPartner(value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select lab partner" />
@@ -737,16 +710,16 @@ const Utilization = () => {
                       <SelectItem value="custom">Add New Partner</SelectItem>
                     </SelectContent>
                   </Select>
-                  {getCurrentPdfData().labPartner === 'custom' && (
+                  {selectedLabPartner === 'custom' && (
                     <Input
                       className="mt-2"
                       placeholder="Enter new lab partner name"
-                      value={getCurrentPdfData().customLabPartner}
-                      onChange={(e) => updateCurrentPdfData({customLabPartner: e.target.value})}
+                      value={customLabPartner}
+                      onChange={(e) => setCustomLabPartner(e.target.value)}
                       onKeyPress={(e) => handleKeyPress(e, () => {})}
                     />
                   )}
-                  {!getCurrentPdfData().labPartner && (
+                  {!selectedLabPartner && (
                     <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>
                   )}
                 </div>
