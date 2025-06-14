@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -103,7 +102,7 @@ const otherServices = {
 
 const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "Digital Print", "Scanned"];
 const serviceTypeOptions = ["Pathology", "Other Services", "Consult"];
-const labPartners = ["Lab Partner 1", "Lab Partner 2", "Lab Partner 3", "Lab Partner 4"];
+const labPartners = ["Apollo", "MEDI 5 Diagnostics", "Aarthi Scans", "Tata 1 MG Lab", "Prognosis Laboratory"];
 
 // QC Demographics and Flags
 const qcDemographicItems = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
