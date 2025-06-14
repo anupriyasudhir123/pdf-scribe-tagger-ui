@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -690,6 +689,28 @@ const Utilization = () => {
                   </div>
                 )}
 
+                {/* Service Type Selection for Entire PDF - Show after upload but before split */}
+                {uploadedFiles.length > 0 && !splitPdfs && (
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                    <Label className="text-base font-medium mb-2 block">Service Type (Entire PDF) *</Label>
+                    <div className="flex gap-2">
+                      {serviceTypeOptions.map(type => (
+                        <Button
+                          key={type}
+                          variant={selectedServiceType === type ? "default" : "outline"}
+                          onClick={() => setSelectedServiceType(type)}
+                          size="sm"
+                        >
+                          {type}
+                        </Button>
+                      ))}
+                    </div>
+                    {!selectedServiceType && (
+                      <p className="text-sm text-gray-600 mt-1">Please select a service type for the entire PDF</p>
+                    )}
+                  </div>
+                )}
+
                 {/* PDF Preview and Controls */}
                 {uploadedFiles.length > 0 && (
                   <div className="border rounded-lg p-4 flex-1">
@@ -740,7 +761,7 @@ const Utilization = () => {
                     {/* Page Selection for Splitting - Only show if not split yet */}
                     {!splitPdfs && (
                       <div className="mb-4">
-                        <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
+                        <Label className="text-sm font-medium mb-2 block">Select Pages to Split (Optional):</Label>
                         <ScrollArea className="h-48">
                           <div className="grid grid-cols-3 gap-2 p-2">
                             {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
@@ -919,30 +940,6 @@ const Utilization = () => {
                     <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>
                   )}
                 </div>
-
-                {/* Service Type - Only show for non-split PDFs */}
-                {!splitPdfs && (
-                  <div>
-                    <Label className="text-base font-medium">Service Type *</Label>
-                    <div className="flex gap-2 mt-2">
-                      {serviceTypeOptions.map(type => {
-                        const currentData = getCurrentPdfData();
-                        return (
-                          <Button
-                            key={type}
-                            variant={currentData.serviceType === type ? "default" : "outline"}
-                            onClick={() => updateCurrentPdfData({serviceType: type})}
-                          >
-                            {type}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    {!getCurrentPdfData().serviceType && (
-                      <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
-                    )}
-                  </div>
-                )}
 
                 {/* Lab Partner */}
                 <div>
