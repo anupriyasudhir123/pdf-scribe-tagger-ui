@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -504,7 +505,7 @@ const Utilization = () => {
                     {/* Page Thumbnails Grid for Selection */}
                     <div className="mb-4">
                       <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
-                      <ScrollArea className="h-32">
+                      <ScrollArea className="h-48">
                         <div className="grid grid-cols-4 gap-2 p-2">
                           {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
                             <div
@@ -516,11 +517,11 @@ const Utilization = () => {
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
                             >
-                              <div className="bg-white h-20 rounded border flex items-center justify-center">
-                                <div className="text-center">
-                                  <FileText className="h-6 w-6 text-gray-400 mx-auto" />
-                                  <div className="text-xs mt-1 text-gray-500">Page {pageNum}</div>
-                                </div>
+                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center">
+                                <FileText className="h-8 w-8 text-gray-400 mb-1" />
+                                <div className="text-xs text-gray-500">Page {pageNum}</div>
+                                <div className="w-full h-2 bg-gray-100 mt-2 rounded"></div>
+                                <div className="w-3/4 h-1 bg-gray-200 mt-1 rounded"></div>
                               </div>
                               {selectedPages.includes(pageNum) && (
                                 <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -534,10 +535,15 @@ const Utilization = () => {
                     </div>
 
                     {/* Current Page Preview */}
-                    <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4">
-                      <div className="text-center">
-                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-2" />
-                        <span className="text-gray-500">PDF Preview - Page {currentPage}</span>
+                    <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4 border">
+                      <div className="text-center bg-white p-8 rounded shadow-sm border">
+                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <span className="text-gray-500 text-lg font-medium">PDF Preview - Page {currentPage}</span>
+                        <div className="mt-4 space-y-2">
+                          <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
+                          <div className="w-24 h-2 bg-gray-200 rounded mx-auto"></div>
+                          <div className="w-28 h-2 bg-gray-200 rounded mx-auto"></div>
+                        </div>
                       </div>
                     </div>
 
@@ -618,7 +624,7 @@ const Utilization = () => {
 
                 {/* Report Quality - Mandatory */}
                 <div>
-                  <Label className="text-base font-medium text-red-600">Report Quality *</Label>
+                  <Label className="text-base font-medium">Report Quality *</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {qualityOptions.map(quality => {
                       const currentData = getCurrentPdfData();
@@ -642,13 +648,13 @@ const Utilization = () => {
                     })}
                   </div>
                   {getCurrentPdfData().quality.length === 0 && (
-                    <p className="text-sm text-red-500 mt-1">Please select at least one quality option</p>
+                    <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>
                   )}
                 </div>
 
                 {/* Service Type - Mandatory */}
                 <div>
-                  <Label className="text-base font-medium text-red-600">Service Type *</Label>
+                  <Label className="text-base font-medium">Service Type *</Label>
                   <div className="flex gap-2 mt-2">
                     {serviceTypeOptions.map(type => {
                       const currentData = getCurrentPdfData();
@@ -664,13 +670,13 @@ const Utilization = () => {
                     })}
                   </div>
                   {!getCurrentPdfData().serviceType && (
-                    <p className="text-sm text-red-500 mt-1">Please select a service type</p>
+                    <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
                   )}
                 </div>
 
                 {/* Lab Partner - Mandatory */}
                 <div>
-                  <Label className="text-red-600">Executing Lab Partner *</Label>
+                  <Label>Executing Lab Partner *</Label>
                   <Select 
                     value={getCurrentPdfData().labPartner} 
                     onValueChange={(value) => updateCurrentPdfData({labPartner: value})}
@@ -695,7 +701,7 @@ const Utilization = () => {
                     />
                   )}
                   {!getCurrentPdfData().labPartner && (
-                    <p className="text-sm text-red-500 mt-1">Please select a lab partner</p>
+                    <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>
                   )}
                 </div>
 
@@ -733,11 +739,11 @@ const Utilization = () => {
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
                       Service Item Tagging
-                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs">(Pending)</span>}
+                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
                     <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled()}>
                       QC Verification
-                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs">(Pending)</span>}
+                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
                   </TabsList>
 
@@ -790,7 +796,7 @@ const Utilization = () => {
                         <div className="space-y-6">
                           {/* QC Step: Verify Demographics */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">QC Step: Verify Demographics</Label>
+                            <Label className="text-base font-medium mb-2 block">Verify Demographics</Label>
                             <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
                             <div className="space-y-2">
                               {qcDemographicItems.map(item => (
@@ -829,7 +835,7 @@ const Utilization = () => {
 
                           {/* QC Tracker Status */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">QC Tracker Status</Label>
+                            <Label className="text-base font-medium mb-2 block">QC Status</Label>
                             <Label htmlFor="qc-status">Overall QC Status</Label>
                             <Select value={qcStatus} onValueChange={setQcStatus}>
                               <SelectTrigger>
