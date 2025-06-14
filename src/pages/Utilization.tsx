@@ -165,6 +165,9 @@ const Utilization = () => {
     qcStatus: ''
   });
   
+  // Track all selected utilization items globally to prevent duplicates
+  const [globalSelectedItems, setGlobalSelectedItems] = useState<Set<string>>(new Set());
+  
   // Shared fields between both PDFs
   const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
@@ -176,6 +179,43 @@ const Utilization = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+
+  // Helper function to update global selected items
+  const updateGlobalSelectedItems = useCallback(() => {
+    const allSelected = new Set<string>();
+    
+    if (splitPdfs) {
+      // Get all selected items from both PDFs
+      [splitPdfs.pdf1, splitPdfs.pdf2].forEach(pdf => {
+        Object.values(pdf.pageUtilization).forEach(pageData => {
+          Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+            if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+              // Only count actual utilization items, not category headers
+              const parts = key.split('-');
+              if (parts.length > 1) {
+                allSelected.add(key);
+              }
+            }
+          });
+        });
+      });
+    } else {
+      // Get all selected items from main PDF
+      Object.values(mainPageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              allSelected.add(key);
+            }
+          }
+        });
+      });
+    }
+    
+    setGlobalSelectedItems(allSelected);
+  }, [splitPdfs, mainPageUtilization]);
 
   // Helper function to get current QC verification data
   const getCurrentQCVerification = (): QCVerification => {
@@ -295,7 +335,7 @@ const Utilization = () => {
           expectedCount: 0
         };
         
-        return {
+        const updated = {
           ...prev,
           [selectedPdfForTagging]: {
             ...currentPdf,
@@ -308,6 +348,11 @@ const Utilization = () => {
             }
           }
         };
+        
+        // Update global selected items after state change
+        setTimeout(() => updateGlobalSelectedItems(), 0);
+        
+        return updated;
       });
     } else {
       setMainPageUtilization(prev => {
@@ -317,13 +362,18 @@ const Utilization = () => {
           expectedCount: 0
         };
         
-        return {
+        const updated = {
           ...prev,
           [currentPage]: {
             ...currentPageData,
             ...updates
           }
         };
+        
+        // Update global selected items after state change
+        setTimeout(() => updateGlobalSelectedItems(), 0);
+        
+        return updated;
       });
     }
   };
@@ -578,11 +628,11 @@ const Utilization = () => {
     const currentSelectedItems = currentPageData?.selectedItems || {};
     const newSelected = !currentSelectedItems[key];
     
-    // For split PDFs, check if item is already selected in other PDF
-    if (splitPdfs && newSelected && isItemSelectedInOtherPdf(key)) {
+    // Check if item is already selected globally (on any page)
+    if (newSelected && globalSelectedItems.has(key)) {
       toast({
         title: "Item Already Selected",
-        description: `"${item}" is already selected in the other PDF. Each utilization item can only be selected once across all PDFs.`,
+        description: `"${item}" is already selected on another page. Each utilization item can only be selected once.`,
         variant: "destructive"
       });
       return;
@@ -619,16 +669,16 @@ const Utilization = () => {
     const categoryItems = currentServices[category] || [];
     const allSelected = categoryItems.every(item => currentSelectedItems[`${category}-${item}`]);
     
-    // For split PDFs, check if any items in this category are already selected in other PDF
-    if (splitPdfs && !allSelected) {
+    // Check if any items in this category are already selected globally
+    if (!allSelected) {
       const conflictingItems = categoryItems.filter(item => 
-        isItemSelectedInOtherPdf(`${category}-${item}`)
+        globalSelectedItems.has(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]
       );
       
       if (conflictingItems.length > 0) {
         toast({
           title: "Items Already Selected",
-          description: `Some items in "${category}" are already selected in the other PDF: ${conflictingItems.join(', ')}`,
+          description: `Some items in "${category}" are already selected on other pages: ${conflictingItems.join(', ')}`,
           variant: "destructive"
         });
         return;
@@ -640,10 +690,12 @@ const Utilization = () => {
     // Toggle category header
     newSelectedItems[category] = !allSelected;
     
-    // Toggle all items in category
+    // Toggle all items in category (only if not already selected globally)
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
-      newSelectedItems[key] = !allSelected;
+      if (!globalSelectedItems.has(key) || currentSelectedItems[key]) {
+        newSelectedItems[key] = !allSelected;
+      }
     });
     
     updateCurrentPageData({ 
@@ -768,24 +820,24 @@ const Utilization = () => {
             {items.map(item => {
               const itemKey = `${category}-${item}`;
               const isSelected = selectedItems[itemKey] || false;
-              const isDisabledDueToOtherPdf = splitPdfs && !isSelected && isItemSelectedInOtherPdf(itemKey);
+              const isAlreadySelectedGlobally = globalSelectedItems.has(itemKey) && !isSelected;
               
               return (
                 <div key={item} className="flex items-center space-x-2">
                   <Checkbox
                     checked={isSelected}
-                    disabled={isDisabledDueToOtherPdf}
+                    disabled={isAlreadySelectedGlobally}
                     onCheckedChange={() => handleServiceItemToggle(category, item)}
                   />
                   <Label 
                     className={`text-sm cursor-pointer ${
-                      isDisabledDueToOtherPdf ? 'text-gray-400 line-through' : ''
+                      isAlreadySelectedGlobally ? 'text-gray-400 line-through' : ''
                     }`} 
-                    onClick={() => !isDisabledDueToOtherPdf && handleServiceItemToggle(category, item)}
+                    onClick={() => !isAlreadySelectedGlobally && handleServiceItemToggle(category, item)}
                   >
                     {item}
-                    {isDisabledDueToOtherPdf && (
-                      <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
+                    {isAlreadySelectedGlobally && (
+                      <span className="ml-2 text-xs text-red-500">(Already selected on another page)</span>
                     )}
                   </Label>
                 </div>
