@@ -176,13 +176,14 @@ const Utilization = () => {
 
   // Check if at least one utilization item is selected
   const hasUtilizationSelected = () => {
-    if (selectedServiceType === 'Consult') return true; // Consult doesn't need utilization items
+    const currentData = getCurrentPdfData();
+    if (currentData.serviceType === 'Consult') return true; // Consult doesn't need utilization items
     if (isPageWiseTagging && splitPdfs && selectedPdfForTagging) {
       const currentPdf = splitPdfs[selectedPdfForTagging];
       const currentPageUtilization = currentPdf.pageUtilization[currentPage];
       return currentPageUtilization ? Object.values(currentPageUtilization.selectedItems).some(Boolean) : false;
     }
-    return Object.values(selectedItems).some(Boolean);
+    return Object.values(currentData.selectedItems).some(Boolean);
   };
 
   // Check if demographics verification has been started
@@ -197,7 +198,7 @@ const Utilization = () => {
         const pageUtilization = currentPdf.pageUtilization[currentPage];
         return {
           referenceId: currentPdf.referenceId,
-          serviceType: pageUtilization?.serviceType || currentPdf.serviceType,
+          serviceType: currentPdf.serviceType, // Use PDF-level service type, not page-level
           expectedCount: pageUtilization?.expectedCount || 0,
           selectedItems: pageUtilization?.selectedItems || {},
           comments: pageUtilization?.comments || ''
@@ -217,7 +218,10 @@ const Utilization = () => {
   const updateCurrentPdfData = (updates: Partial<any>) => {
     if (splitPdfs && selectedPdfForTagging) {
       if (isPageWiseTagging) {
-        // Update page-specific utilization
+        // For page-wise updates, don't update service type at page level
+        const pageUpdates = { ...updates };
+        delete pageUpdates.serviceType; // Service type is PDF-level, not page-level
+        
         setSplitPdfs(prev => {
           if (!prev) return null;
           const currentPdf = prev[selectedPdfForTagging];
@@ -225,13 +229,21 @@ const Utilization = () => {
             ...currentPdf.pageUtilization,
             [currentPage]: {
               ...currentPdf.pageUtilization[currentPage],
-              ...updates
+              ...pageUpdates
             }
           };
+          
+          // Handle PDF-level updates (like service type)
+          const pdfLevelUpdates: any = {};
+          if (updates.serviceType !== undefined) {
+            pdfLevelUpdates.serviceType = updates.serviceType;
+          }
+          
           return {
             ...prev,
             [selectedPdfForTagging]: {
               ...currentPdf,
+              ...pdfLevelUpdates,
               pageUtilization: updatedPageUtilization
             }
           };
@@ -371,10 +383,6 @@ const Utilization = () => {
     
     // Load PDF-specific data (quality and lab partner remain shared)
     setReferenceId(pdfData.referenceId);
-    setSelectedServiceType(pdfData.serviceType);
-    setExpectedCount(pdfData.expectedCount);
-    setSelectedItems(pdfData.selectedItems);
-    setComments(pdfData.comments);
     
     // Enable page-wise tagging for split PDFs
     setIsPageWiseTagging(true);
@@ -688,6 +696,31 @@ const Utilization = () => {
                       </div>
                     </div>
 
+                    {/* Service Type Selection - Now shown after split */}
+                    {splitPdfs && selectedPdfForTagging && (
+                      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <Label className="text-base font-medium mb-2 block">Service Type for {selectedPdfForTagging.toUpperCase()} *</Label>
+                        <div className="flex gap-2">
+                          {serviceTypeOptions.map(type => {
+                            const currentData = getCurrentPdfData();
+                            return (
+                              <Button
+                                key={type}
+                                variant={currentData.serviceType === type ? "default" : "outline"}
+                                onClick={() => updateCurrentPdfData({serviceType: type})}
+                                size="sm"
+                              >
+                                {type}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        {!getCurrentPdfData().serviceType && (
+                          <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Page Selection for Splitting - Only show if not split yet */}
                     {!splitPdfs && (
                       <div className="mb-4">
@@ -871,27 +904,29 @@ const Utilization = () => {
                   )}
                 </div>
 
-                {/* Service Type */}
-                <div>
-                  <Label className="text-base font-medium">Service Type *</Label>
-                  <div className="flex gap-2 mt-2">
-                    {serviceTypeOptions.map(type => {
-                      const currentData = getCurrentPdfData();
-                      return (
-                        <Button
-                          key={type}
-                          variant={currentData.serviceType === type ? "default" : "outline"}
-                          onClick={() => updateCurrentPdfData({serviceType: type})}
-                        >
-                          {type}
-                        </Button>
-                      );
-                    })}
+                {/* Service Type - Only show for non-split PDFs */}
+                {!splitPdfs && (
+                  <div>
+                    <Label className="text-base font-medium">Service Type *</Label>
+                    <div className="flex gap-2 mt-2">
+                      {serviceTypeOptions.map(type => {
+                        const currentData = getCurrentPdfData();
+                        return (
+                          <Button
+                            key={type}
+                            variant={currentData.serviceType === type ? "default" : "outline"}
+                            onClick={() => updateCurrentPdfData({serviceType: type})}
+                          >
+                            {type}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    {!getCurrentPdfData().serviceType && (
+                      <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
+                    )}
                   </div>
-                  {!getCurrentPdfData().serviceType && (
-                    <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
-                  )}
-                </div>
+                )}
 
                 {/* Lab Partner */}
                 <div>
