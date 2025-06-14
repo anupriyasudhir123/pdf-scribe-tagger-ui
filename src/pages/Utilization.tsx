@@ -192,27 +192,35 @@ const Utilization = () => {
   };
 
   const getCurrentPdfData = () => {
+    console.log('getCurrentPdfData called - splitPdfs:', splitPdfs, 'selectedPdfForTagging:', selectedPdfForTagging, 'isPageWiseTagging:', isPageWiseTagging);
+    
     if (splitPdfs && selectedPdfForTagging) {
       if (isPageWiseTagging) {
         const currentPdf = splitPdfs[selectedPdfForTagging];
         const pageUtilization = currentPdf.pageUtilization[currentPage];
-        return {
+        const result = {
           referenceId: currentPdf.referenceId,
           serviceType: currentPdf.serviceType,
           expectedCount: pageUtilization?.expectedCount || 0,
           selectedItems: pageUtilization?.selectedItems || {},
           comments: pageUtilization?.comments || ''
         };
+        console.log('getCurrentPdfData - page-wise result:', result);
+        return result;
       }
-      return splitPdfs[selectedPdfForTagging];
+      const result = splitPdfs[selectedPdfForTagging];
+      console.log('getCurrentPdfData - PDF-level result:', result);
+      return result;
     }
-    return {
+    const result = {
       referenceId,
       serviceType: selectedServiceType,
       expectedCount,
       selectedItems,
       comments
     };
+    console.log('getCurrentPdfData - main result:', result);
+    return result;
   };
 
   const updateCurrentPdfData = (updates: Partial<any>) => {
@@ -373,10 +381,12 @@ const Utilization = () => {
   };
 
   const handlePdfSelection = (pdfKey: 'pdf1' | 'pdf2') => {
+    console.log('handlePdfSelection called with:', pdfKey);
     if (!splitPdfs) return;
     
     setSelectedPdfForTagging(pdfKey);
     const pdfData = splitPdfs[pdfKey];
+    console.log('Selected PDF data:', pdfData);
     
     // Set current page to first page of selected PDF
     setCurrentPage(pdfData.pages[0]);
@@ -386,6 +396,7 @@ const Utilization = () => {
     
     // Enable page-wise tagging for split PDFs
     setIsPageWiseTagging(true);
+    console.log('Page-wise tagging enabled for PDF:', pdfKey);
   };
 
   const handlePageNavigation = (direction: 'prev' | 'next') => {
@@ -540,7 +551,16 @@ const Utilization = () => {
 
   const filteredServices = () => {
     const currentData = getCurrentPdfData();
+    console.log('filteredServices - currentData.serviceType:', currentData.serviceType);
+    
+    if (!currentData.serviceType) {
+      console.log('filteredServices - no service type, returning empty');
+      return {};
+    }
+    
     const currentServices = currentData.serviceType === 'Pathology' ? pathologyServices : otherServices;
+    console.log('filteredServices - currentServices:', Object.keys(currentServices));
+    
     if (!searchTerm) return currentServices;
     
     const filtered: Record<string, string[]> = {};
@@ -553,6 +573,7 @@ const Utilization = () => {
         filtered[category] = filteredItems;
       }
     });
+    console.log('filteredServices - filtered result:', Object.keys(filtered));
     return filtered;
   };
 
@@ -582,14 +603,18 @@ const Utilization = () => {
     }
 
     const services = filteredServices();
+    console.log('renderServiceItems - services from filteredServices:', services);
     
-    if (Object.keys(services).length === 0) {
+    if (!services || Object.keys(services).length === 0) {
+      console.log('renderServiceItems - no services found');
       return (
         <div className="text-center py-8 text-gray-500">
           <p>No services found for the selected type.</p>
         </div>
       );
     }
+    
+    console.log('renderServiceItems - rendering services:', Object.keys(services));
     
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
