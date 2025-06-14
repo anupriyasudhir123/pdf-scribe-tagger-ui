@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X, Tag } from 'lucide-react';
+import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Service data structure for Pathology
@@ -605,20 +605,14 @@ const Utilization = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
           {/* Left Side - PDF Upload and Preview */}
-          <div className="lg:col-span-1">
+          <div className="col-span-1">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
                   PDF Upload & Preview
-                  {isPageWiseTagging && (
-                    <span className="text-sm bg-blue-100 text-blue-600 px-2 py-1 rounded">
-                      <Tag className="h-3 w-3 inline mr-1" />
-                      Page-wise Tagging
-                    </span>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -723,12 +717,6 @@ const Utilization = () => {
                         <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <span className="text-gray-500 text-lg font-medium">
                           Page {currentPage}
-                          {isPageWiseTagging && (
-                            <span className="block text-sm text-blue-600 mt-1">
-                              <Tag className="h-3 w-3 inline mr-1" />
-                              Individual tagging enabled
-                            </span>
-                          )}
                         </span>
                         <div className="mt-4 space-y-2">
                           <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
@@ -818,17 +806,12 @@ const Utilization = () => {
           </div>
 
           {/* Right Side - Form Fields and Utilization */}
-          <div className="lg:col-span-1 flex flex-col gap-4">
+          <div className="col-span-1 flex flex-col gap-4">
             {/* Top Right - Form Fields */}
             <Card>
               <CardHeader>
                 <CardTitle>
                   Report Details
-                  {isPageWiseTagging && (
-                    <span className="text-sm font-normal text-blue-600 block">
-                      Page {currentPage} individual tagging
-                    </span>
-                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -981,7 +964,7 @@ const Utilization = () => {
                                 Utilization ({getCurrentPdfData().serviceType}) *
                                 {isPageWiseTagging && (
                                   <span className="text-sm font-normal text-blue-600 block">
-                                    Page {currentPage} individual tagging
+                                    Page {currentPage}
                                   </span>
                                 )}
                               </h3>
