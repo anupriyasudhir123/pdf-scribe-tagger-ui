@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -136,6 +135,7 @@ interface SplitPdfData {
 
 const Utilization = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
@@ -219,6 +219,8 @@ const Utilization = () => {
       pages: Math.floor(Math.random() * 10) + 1 // Mock page count
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
+    
+    // Set first file as reference ID if none exists
     if (files.length > 0 && !referenceId) {
       setReferenceId(files[0].name.replace(/\.[^/.]+$/, ""));
     }
@@ -227,6 +229,26 @@ const Utilization = () => {
       title: "Files Uploaded",
       description: `${files.length} file(s) uploaded successfully`,
     });
+  };
+
+  const handleFileSelection = (index: number) => {
+    setSelectedFileIndex(index);
+    const selectedFile = uploadedFiles[index];
+    setReferenceId(selectedFile.name.replace(/\.[^/.]+$/, ""));
+    setTotalPages(selectedFile.pages);
+    setCurrentPage(1);
+    setSelectedPages([]);
+    setSplitPdfs(null);
+    setSelectedPdfForTagging(null);
+    
+    // Reset form data for new file
+    setSelectedServiceType('');
+    setSelectedItems({});
+    setExpectedCount(0);
+    setComments('');
+    setEliminatedDemographics([]);
+    setEliminatedFlags([]);
+    setQcStatus('');
   };
 
   const handlePageSelection = (pageNum: number) => {
@@ -389,6 +411,7 @@ const Utilization = () => {
 
   const handleDelete = () => {
     setUploadedFiles([]);
+    setSelectedFileIndex(0);
     setReferenceId('');
     setSelectedQuality([]);
     setSelectedServiceType('');
@@ -475,9 +498,9 @@ const Utilization = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           {/* Left Side - PDF Upload and Preview */}
-          <div className="space-y-4">
+          <div className="lg:col-span-1">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -507,6 +530,29 @@ const Utilization = () => {
                   </label>
                 </div>
 
+                {/* Bulk Upload Reference ID Selection */}
+                {uploadedFiles.length > 1 && (
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Select Reference ID to Process:</Label>
+                    <ScrollArea className="h-32">
+                      <div className="space-y-2">
+                        {uploadedFiles.map((file, index) => (
+                          <Button
+                            key={index}
+                            variant={selectedFileIndex === index ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleFileSelection(index)}
+                            className="w-full justify-start text-left"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            <span className="truncate">{file.name}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
                 {/* PDF Preview and Controls */}
                 {uploadedFiles.length > 0 && (
                   <div className="border rounded-lg p-4 flex-1">
@@ -528,7 +574,7 @@ const Utilization = () => {
                     <div className="mb-4">
                       <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
                       <ScrollArea className="h-48">
-                        <div className="grid grid-cols-4 gap-2 p-2">
+                        <div className="grid grid-cols-3 gap-2 p-2">
                           {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
                             <div
                               key={pageNum}
@@ -539,14 +585,12 @@ const Utilization = () => {
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
                             >
-                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center p-2">
-                                <FileText className="h-8 w-8 text-gray-400 mb-1" />
-                                <div className="text-xs text-gray-500">Page {pageNum}</div>
-                                <div className="w-full h-2 bg-gray-100 mt-2 rounded"></div>
-                                <div className="w-3/4 h-1 bg-gray-200 mt-1 rounded"></div>
+                              <div className="bg-white h-20 rounded border flex flex-col items-center justify-center p-2">
+                                <FileText className="h-6 w-6 text-gray-400 mb-1" />
+                                <div className="text-xs text-gray-500">{pageNum}</div>
                               </div>
                               {selectedPages.includes(pageNum) && (
-                                <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
                                   ✓
                                 </div>
                               )}
@@ -560,7 +604,7 @@ const Utilization = () => {
                     <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4 border">
                       <div className="text-center bg-white p-8 rounded shadow-sm border">
                         <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <span className="text-gray-500 text-lg font-medium">PDF Preview - Page {currentPage}</span>
+                        <span className="text-gray-500 text-lg font-medium">Page {currentPage}</span>
                         <div className="mt-4 space-y-2">
                           <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
                           <div className="w-24 h-2 bg-gray-200 rounded mx-auto"></div>
@@ -592,7 +636,7 @@ const Utilization = () => {
                     {/* Split PDFs Preview and Selection */}
                     {splitPdfs && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-medium mb-2">Split PDFs - Select one to tag:</h4>
+                        <h4 className="font-medium mb-2">Select PDF to tag:</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div 
                             className={`cursor-pointer p-3 rounded border-2 transition-all ${
@@ -603,11 +647,11 @@ const Utilization = () => {
                             onClick={() => handlePdfSelection('pdf1')}
                           >
                             <Label className="text-sm font-medium cursor-pointer">PDF 1 (Pages: {splitPdfs.pdf1.pages.join(', ')})</Label>
-                            <div className="bg-white h-20 rounded border flex items-center justify-center mt-2">
-                              <FileText className="h-8 w-8 text-blue-500" />
+                            <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
+                              <FileText className="h-6 w-6 text-blue-500" />
                             </div>
                             {selectedPdfForTagging === 'pdf1' && (
-                              <div className="text-xs text-blue-600 mt-1 font-medium">Currently Selected</div>
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
                             )}
                           </div>
                           <div 
@@ -619,11 +663,11 @@ const Utilization = () => {
                             onClick={() => handlePdfSelection('pdf2')}
                           >
                             <Label className="text-sm font-medium cursor-pointer">PDF 2 (Pages: {splitPdfs.pdf2.pages.join(', ')})</Label>
-                            <div className="bg-white h-20 rounded border flex items-center justify-center mt-2">
-                              <FileText className="h-8 w-8 text-green-500" />
+                            <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
+                              <FileText className="h-6 w-6 text-green-500" />
                             </div>
                             {selectedPdfForTagging === 'pdf2' && (
-                              <div className="text-xs text-blue-600 mt-1 font-medium">Currently Selected</div>
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
                             )}
                           </div>
                         </div>
@@ -632,22 +676,53 @@ const Utilization = () => {
                   </div>
                 )}
 
-                {/* Reference ID */}
-                <div>
-                  <Label htmlFor="reference-id">Reference ID</Label>
-                  <Input
-                    id="reference-id"
-                    value={referenceId}
-                    onChange={(e) => updateCurrentPdfData({referenceId: e.target.value})}
-                    onKeyPress={(e) => handleKeyPress(e, () => {})}
-                    placeholder="Auto-filled from PDF name"
-                  />
+                {/* Delete Button */}
+                <Button variant="destructive" onClick={handleDelete} className="w-full">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Side - Form Fields and Utilization */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Top Right - Form Fields */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Report Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Reference ID */}
+                  <div>
+                    <Label htmlFor="reference-id">Reference ID</Label>
+                    <Input
+                      id="reference-id"
+                      value={referenceId}
+                      onChange={(e) => updateCurrentPdfData({referenceId: e.target.value})}
+                      placeholder="Auto-filled from PDF name"
+                    />
+                  </div>
+
+                  {/* Expected Count */}
+                  <div>
+                    <Label htmlFor="expected-count">Expected Count</Label>
+                    <Input
+                      id="expected-count"
+                      type="number"
+                      value={getCurrentPdfData().expectedCount.toString()}
+                      onChange={(e) => updateCurrentPdfData({expectedCount: Number(e.target.value)})}
+                      placeholder="Auto-calculated for pathology"
+                      readOnly={getCurrentPdfData().serviceType === 'Pathology'}
+                    />
+                  </div>
                 </div>
 
                 {/* Report Quality - Shared between PDFs */}
                 <div>
                   <Label className="text-base font-medium">Report Quality *</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-3 gap-2 mt-2">
                     {qualityOptions.map(quality => (
                       <Button
                         key={quality}
@@ -710,44 +785,21 @@ const Utilization = () => {
                       placeholder="Enter new lab partner name"
                       value={customLabPartner}
                       onChange={(e) => setCustomLabPartner(e.target.value)}
-                      onKeyPress={(e) => handleKeyPress(e, () => {})}
                     />
                   )}
                   {!selectedLabPartner && (
                     <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>
                   )}
                 </div>
-
-                {/* Expected Count */}
-                <div>
-                  <Label htmlFor="expected-count">Expected Count</Label>
-                  <Input
-                    id="expected-count"
-                    type="number"
-                    value={getCurrentPdfData().expectedCount.toString()}
-                    onChange={(e) => updateCurrentPdfData({expectedCount: Number(e.target.value)})}
-                    onKeyPress={(e) => handleKeyPress(e, () => {})}
-                    placeholder="Auto-calculated for pathology"
-                    readOnly={getCurrentPdfData().serviceType === 'Pathology'}
-                  />
-                </div>
-
-                {/* Delete Button */}
-                <Button variant="destructive" onClick={handleDelete} className="w-full">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Clear All Data
-                </Button>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Right Side - Utilization and QC Tabs */}
-          <div className="space-y-4">
-            <Card className="h-full flex flex-col">
+            {/* Bottom Right - Utilization & QC */}
+            <Card className="flex-1">
               <CardHeader>
                 <CardTitle>Utilization & QC Verification</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1">
+              <CardContent className="h-[calc(100vh-600px)]">
                 <Tabs defaultValue="utilization" className="h-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
@@ -760,7 +812,7 @@ const Utilization = () => {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="utilization" className="flex-1">
+                  <TabsContent value="utilization" className="flex-1 h-full">
                     {!isMandatoryFieldsFilled() ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -778,13 +830,12 @@ const Utilization = () => {
                               placeholder="Search utilization items..."
                               value={searchTerm}
                               onChange={(e) => setSearchTerm(e.target.value)}
-                              onKeyPress={(e) => handleKeyPress(e, () => {})}
                               className="pl-10"
                             />
                           </div>
                         )}
 
-                        <ScrollArea className="h-[calc(100vh-500px)]">
+                        <ScrollArea className="h-full">
                           {getCurrentPdfData().serviceType && (
                             <div>
                               <h3 className="font-medium mb-3">
@@ -801,7 +852,7 @@ const Utilization = () => {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="qc" className="flex-1">
+                  <TabsContent value="qc" className="flex-1 h-full">
                     {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -813,7 +864,7 @@ const Utilization = () => {
                         </div>
                       </div>
                     ) : (
-                      <ScrollArea className="h-[calc(100vh-500px)]">
+                      <ScrollArea className="h-full">
                         <div className="space-y-6">
                           {/* QC Step: Verify Demographics */}
                           <div>
@@ -859,7 +910,6 @@ const Utilization = () => {
                           {/* QC Tracker Status */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Status *</Label>
-                            <Label htmlFor="qc-status">Overall QC Status</Label>
                             <Select value={qcStatus} onValueChange={setQcStatus}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Status" />
