@@ -114,12 +114,40 @@ interface FileData {
   pages: number;
 }
 
+interface SplitPdfData {
+  pdf1: {
+    pages: number[];
+    referenceId: string;
+    quality: string[];
+    serviceType: string;
+    labPartner: string;
+    customLabPartner: string;
+    expectedCount: number;
+    selectedItems: Record<string, boolean>;
+    comments: string;
+  };
+  pdf2: {
+    pages: number[];
+    referenceId: string;
+    quality: string[];
+    serviceType: string;
+    labPartner: string;
+    customLabPartner: string;
+    expectedCount: number;
+    selectedItems: Record<string, boolean>;
+    comments: string;
+  };
+}
+
 const Utilization = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
-  const [splitPdfs, setSplitPdfs] = useState<{pdf1: number[], pdf2: number[]} | null>(null);
+  const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
+  const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
+  
+  // Current active data (either main or selected split PDF)
   const [referenceId, setReferenceId] = useState('');
   const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedServiceType, setSelectedServiceType] = useState('');
@@ -133,6 +161,53 @@ const Utilization = () => {
   const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
   const [qcStatus, setQcStatus] = useState('');
   const { toast } = useToast();
+
+  // Check if mandatory fields are filled
+  const isMandatoryFieldsFilled = () => {
+    return selectedQuality.length > 0 && selectedServiceType && selectedLabPartner;
+  };
+
+  const getCurrentPdfData = () => {
+    if (splitPdfs && selectedPdfForTagging) {
+      return splitPdfs[selectedPdfForTagging];
+    }
+    return {
+      referenceId,
+      quality: selectedQuality,
+      serviceType: selectedServiceType,
+      labPartner: selectedLabPartner,
+      customLabPartner,
+      expectedCount,
+      selectedItems,
+      comments
+    };
+  };
+
+  const updateCurrentPdfData = (updates: Partial<any>) => {
+    if (splitPdfs && selectedPdfForTagging) {
+      setSplitPdfs(prev => prev ? {
+        ...prev,
+        [selectedPdfForTagging]: {
+          ...prev[selectedPdfForTagging],
+          ...updates
+        }
+      } : null);
+    } else {
+      // Update main data
+      Object.entries(updates).forEach(([key, value]) => {
+        switch (key) {
+          case 'referenceId': setReferenceId(value); break;
+          case 'quality': setSelectedQuality(value); break;
+          case 'serviceType': setSelectedServiceType(value); break;
+          case 'labPartner': setSelectedLabPartner(value); break;
+          case 'customLabPartner': setCustomLabPartner(value); break;
+          case 'expectedCount': setExpectedCount(value); break;
+          case 'selectedItems': setSelectedItems(value); break;
+          case 'comments': setComments(value); break;
+        }
+      });
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -171,15 +246,68 @@ const Utilization = () => {
     }
 
     const allPages = Array.from({length: totalPages}, (_, i) => i + 1);
-    const pdf1 = selectedPages.sort((a, b) => a - b);
-    const pdf2 = allPages.filter(p => !selectedPages.includes(p));
+    const pdf1Pages = selectedPages.sort((a, b) => a - b);
+    const pdf2Pages = allPages.filter(p => !selectedPages.includes(p));
     
-    setSplitPdfs({ pdf1, pdf2 });
+    const splitData: SplitPdfData = {
+      pdf1: {
+        pages: pdf1Pages,
+        referenceId: referenceId + '_part1',
+        quality: [],
+        serviceType: '',
+        labPartner: '',
+        customLabPartner: '',
+        expectedCount: 0,
+        selectedItems: {},
+        comments: ''
+      },
+      pdf2: {
+        pages: pdf2Pages,
+        referenceId: referenceId + '_part2',
+        quality: [],
+        serviceType: '',
+        labPartner: '',
+        customLabPartner: '',
+        expectedCount: 0,
+        selectedItems: {},
+        comments: ''
+      }
+    };
+
+    setSplitPdfs(splitData);
     setSelectedPages([]);
+    setSelectedPdfForTagging('pdf1'); // Default to first PDF
+    
+    // Clear main data
+    setSelectedQuality([]);
+    setSelectedServiceType('');
+    setSelectedLabPartner('');
+    setCustomLabPartner('');
+    setExpectedCount(0);
+    setSelectedItems({});
+    setComments('');
+    
     toast({
       title: "PDF Split Successfully",
-      description: `Split into PDF 1 (${pdf1.length} pages) and PDF 2 (${pdf2.length} pages)`,
+      description: `Split into PDF 1 (${pdf1Pages.length} pages) and PDF 2 (${pdf2Pages.length} pages)`,
     });
+  };
+
+  const handlePdfSelection = (pdfKey: 'pdf1' | 'pdf2') => {
+    if (!splitPdfs) return;
+    
+    setSelectedPdfForTagging(pdfKey);
+    const pdfData = splitPdfs[pdfKey];
+    
+    // Load PDF-specific data
+    setReferenceId(pdfData.referenceId);
+    setSelectedQuality(pdfData.quality);
+    setSelectedServiceType(pdfData.serviceType);
+    setSelectedLabPartner(pdfData.labPartner);
+    setCustomLabPartner(pdfData.customLabPartner);
+    setExpectedCount(pdfData.expectedCount);
+    setSelectedItems(pdfData.selectedItems);
+    setComments(pdfData.comments);
   };
 
   const handleQualityChange = (quality: string) => {
@@ -389,10 +517,10 @@ const Utilization = () => {
                               onClick={() => handlePageSelection(pageNum)}
                             >
                               <div className="bg-white h-20 rounded border flex items-center justify-center">
-                                <FileText className="h-8 w-8 text-gray-400" />
-                              </div>
-                              <div className="text-xs text-center mt-1 font-medium">
-                                Page {pageNum}
+                                <div className="text-center">
+                                  <FileText className="h-6 w-6 text-gray-400 mx-auto" />
+                                  <div className="text-xs mt-1 text-gray-500">Page {pageNum}</div>
+                                </div>
                               </div>
                               {selectedPages.includes(pageNum) && (
                                 <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -433,22 +561,42 @@ const Utilization = () => {
                       </Button>
                     </div>
 
-                    {/* Split PDFs Preview */}
+                    {/* Split PDFs Preview and Selection */}
                     {splitPdfs && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-medium mb-2">Split PDFs Preview:</h4>
+                        <h4 className="font-medium mb-2">Split PDFs - Select one to tag:</h4>
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium">PDF 1 (Pages: {splitPdfs.pdf1.join(', ')})</Label>
-                            <div className="bg-white h-20 rounded border flex items-center justify-center">
+                          <div 
+                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
+                              selectedPdfForTagging === 'pdf1' 
+                                ? 'border-blue-500 bg-blue-100' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => handlePdfSelection('pdf1')}
+                          >
+                            <Label className="text-sm font-medium cursor-pointer">PDF 1 (Pages: {splitPdfs.pdf1.pages.join(', ')})</Label>
+                            <div className="bg-white h-20 rounded border flex items-center justify-center mt-2">
                               <FileText className="h-8 w-8 text-blue-500" />
                             </div>
+                            {selectedPdfForTagging === 'pdf1' && (
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Currently Selected</div>
+                            )}
                           </div>
-                          <div>
-                            <Label className="text-sm font-medium">PDF 2 (Pages: {splitPdfs.pdf2.join(', ')})</Label>
-                            <div className="bg-white h-20 rounded border flex items-center justify-center">
+                          <div 
+                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
+                              selectedPdfForTagging === 'pdf2' 
+                                ? 'border-blue-500 bg-blue-100' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => handlePdfSelection('pdf2')}
+                          >
+                            <Label className="text-sm font-medium cursor-pointer">PDF 2 (Pages: {splitPdfs.pdf2.pages.join(', ')})</Label>
+                            <div className="bg-white h-20 rounded border flex items-center justify-center mt-2">
                               <FileText className="h-8 w-8 text-green-500" />
                             </div>
+                            {selectedPdfForTagging === 'pdf2' && (
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Currently Selected</div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -462,50 +610,71 @@ const Utilization = () => {
                   <Input
                     id="reference-id"
                     value={referenceId}
-                    onChange={(e) => setReferenceId(e.target.value)}
+                    onChange={(e) => updateCurrentPdfData({referenceId: e.target.value})}
                     onKeyPress={(e) => handleKeyPress(e, () => {})}
                     placeholder="Auto-filled from PDF name"
                   />
                 </div>
 
-                {/* Report Quality */}
+                {/* Report Quality - Mandatory */}
                 <div>
-                  <Label className="text-base font-medium">Report Quality</Label>
+                  <Label className="text-base font-medium text-red-600">Report Quality *</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    {qualityOptions.map(quality => (
-                      <Button
-                        key={quality}
-                        variant={selectedQuality.includes(quality) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleQualityChange(quality)}
-                        className="justify-start"
-                      >
-                        {quality}
-                      </Button>
-                    ))}
+                    {qualityOptions.map(quality => {
+                      const currentData = getCurrentPdfData();
+                      return (
+                        <Button
+                          key={quality}
+                          variant={currentData.quality.includes(quality) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            const currentQuality = currentData.quality;
+                            const newQuality = currentQuality.includes(quality) 
+                              ? currentQuality.filter(q => q !== quality)
+                              : [...currentQuality, quality];
+                            updateCurrentPdfData({quality: newQuality});
+                          }}
+                          className="justify-start"
+                        >
+                          {quality}
+                        </Button>
+                      );
+                    })}
                   </div>
+                  {getCurrentPdfData().quality.length === 0 && (
+                    <p className="text-sm text-red-500 mt-1">Please select at least one quality option</p>
+                  )}
                 </div>
 
-                {/* Service Type */}
+                {/* Service Type - Mandatory */}
                 <div>
-                  <Label className="text-base font-medium">Service Type</Label>
+                  <Label className="text-base font-medium text-red-600">Service Type *</Label>
                   <div className="flex gap-2 mt-2">
-                    {serviceTypeOptions.map(type => (
-                      <Button
-                        key={type}
-                        variant={selectedServiceType === type ? "default" : "outline"}
-                        onClick={() => setSelectedServiceType(type)}
-                      >
-                        {type}
-                      </Button>
-                    ))}
+                    {serviceTypeOptions.map(type => {
+                      const currentData = getCurrentPdfData();
+                      return (
+                        <Button
+                          key={type}
+                          variant={currentData.serviceType === type ? "default" : "outline"}
+                          onClick={() => updateCurrentPdfData({serviceType: type})}
+                        >
+                          {type}
+                        </Button>
+                      );
+                    })}
                   </div>
+                  {!getCurrentPdfData().serviceType && (
+                    <p className="text-sm text-red-500 mt-1">Please select a service type</p>
+                  )}
                 </div>
 
-                {/* Lab Partner */}
+                {/* Lab Partner - Mandatory */}
                 <div>
-                  <Label>Executing Lab Partner</Label>
-                  <Select value={selectedLabPartner} onValueChange={setSelectedLabPartner}>
+                  <Label className="text-red-600">Executing Lab Partner *</Label>
+                  <Select 
+                    value={getCurrentPdfData().labPartner} 
+                    onValueChange={(value) => updateCurrentPdfData({labPartner: value})}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select lab partner" />
                     </SelectTrigger>
@@ -516,14 +685,17 @@ const Utilization = () => {
                       <SelectItem value="custom">Add New Partner</SelectItem>
                     </SelectContent>
                   </Select>
-                  {selectedLabPartner === 'custom' && (
+                  {getCurrentPdfData().labPartner === 'custom' && (
                     <Input
                       className="mt-2"
                       placeholder="Enter new lab partner name"
-                      value={customLabPartner}
-                      onChange={(e) => setCustomLabPartner(e.target.value)}
+                      value={getCurrentPdfData().customLabPartner}
+                      onChange={(e) => updateCurrentPdfData({customLabPartner: e.target.value})}
                       onKeyPress={(e) => handleKeyPress(e, () => {})}
                     />
+                  )}
+                  {!getCurrentPdfData().labPartner && (
+                    <p className="text-sm text-red-500 mt-1">Please select a lab partner</p>
                   )}
                 </div>
 
@@ -533,11 +705,11 @@ const Utilization = () => {
                   <Input
                     id="expected-count"
                     type="number"
-                    value={expectedCount.toString()}
-                    onChange={(e) => setExpectedCount(Number(e.target.value))}
+                    value={getCurrentPdfData().expectedCount.toString()}
+                    onChange={(e) => updateCurrentPdfData({expectedCount: Number(e.target.value)})}
                     onKeyPress={(e) => handleKeyPress(e, () => {})}
                     placeholder="Auto-calculated for pathology"
-                    readOnly={selectedServiceType === 'Pathology'}
+                    readOnly={getCurrentPdfData().serviceType === 'Pathology'}
                   />
                 </div>
 
@@ -559,120 +731,144 @@ const Utilization = () => {
               <CardContent className="flex-1">
                 <Tabs defaultValue="utilization" className="h-full">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="utilization">Service Item Tagging</TabsTrigger>
-                    <TabsTrigger value="qc">QC Verification</TabsTrigger>
+                    <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
+                      Service Item Tagging
+                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs">(Pending)</span>}
+                    </TabsTrigger>
+                    <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled()}>
+                      QC Verification
+                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs">(Pending)</span>}
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="utilization" className="flex-1">
-                    <div className="space-y-4 h-full">
-                      {/* Search within Service Items */}
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          placeholder="Search service items..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          onKeyPress={(e) => handleKeyPress(e, () => {})}
-                          className="pl-10"
-                        />
+                    {!isMandatoryFieldsFilled() ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
+                          <p className="text-sm text-gray-400">Please fill all mandatory fields to continue</p>
+                        </div>
                       </div>
+                    ) : (
+                      <div className="space-y-4 h-full">
+                        {/* Search within Service Items */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Input
+                            placeholder="Search service items..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyPress={(e) => handleKeyPress(e, () => {})}
+                            className="pl-10"
+                          />
+                        </div>
 
-                      <ScrollArea className="h-[calc(100vh-500px)]">
-                        {selectedServiceType && (
-                          <div>
-                            <h3 className="font-medium mb-3">
-                              Service Items ({selectedServiceType})
-                            </h3>
-                            {renderServiceItems()}
-                          </div>
-                        )}
-                      </ScrollArea>
-                    </div>
+                        <ScrollArea className="h-[calc(100vh-500px)]">
+                          {getCurrentPdfData().serviceType && (
+                            <div>
+                              <h3 className="font-medium mb-3">
+                                Service Items ({getCurrentPdfData().serviceType})
+                              </h3>
+                              {renderServiceItems()}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="qc" className="flex-1">
-                    <ScrollArea className="h-[calc(100vh-500px)]">
-                      <div className="space-y-6">
-                        {/* QC Step: Verify Demographics */}
-                        <div>
-                          <Label className="text-base font-medium mb-2 block">QC Step: Verify Demographics</Label>
-                          <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
-                          <div className="space-y-2">
-                            {qcDemographicItems.map(item => (
-                              <Button
-                                key={item}
-                                variant={eliminatedDemographics.includes(item) ? "destructive" : "outline"}
-                                size="sm"
-                                onClick={() => handleEliminateItem(item, 'demographics')}
-                                className="mr-2 mb-2"
-                              >
-                                {eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
-                                {item}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* QC Flags */}
-                        <div>
-                          <Label className="text-base font-medium mb-2 block">QC Flags</Label>
-                          <div className="space-y-2">
-                            {qcFlagItems.map(item => (
-                              <Button
-                                key={item}
-                                variant={eliminatedFlags.includes(item) ? "destructive" : "outline"}
-                                size="sm"
-                                onClick={() => handleEliminateItem(item, 'flags')}
-                                className="mr-2 mb-2"
-                              >
-                                {eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
-                                {item}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* QC Tracker Status */}
-                        <div>
-                          <Label className="text-base font-medium mb-2 block">QC Tracker Status</Label>
-                          <Label htmlFor="qc-status">Overall QC Status</Label>
-                          <Select value={qcStatus} onValueChange={setQcStatus}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="passed">Passed</SelectItem>
-                              <SelectItem value="failed">Failed</SelectItem>
-                              <SelectItem value="pending">Pending Review</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* QC Summary */}
-                        <div>
-                          <Label className="text-base font-medium mb-2 block">QC Summary</Label>
-                          <div className="space-y-2">
-                            <div className="text-sm">
-                              <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - eliminatedDemographics.length}/{qcDemographicItems.length}
-                            </div>
-                            <div className="text-sm">
-                              <span className="font-medium">Flags Raised:</span> {eliminatedFlags.length}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Comments */}
-                        <div>
-                          <Label htmlFor="comments">Comments</Label>
-                          <Textarea
-                            id="comments"
-                            placeholder="Enter any additional comments..."
-                            value={comments}
-                            onChange={(e) => setComments(e.target.value)}
-                          />
+                    {!isMandatoryFieldsFilled() ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
+                          <p className="text-sm text-gray-400">Please fill all mandatory fields to continue</p>
                         </div>
                       </div>
-                    </ScrollArea>
+                    ) : (
+                      <ScrollArea className="h-[calc(100vh-500px)]">
+                        <div className="space-y-6">
+                          {/* QC Step: Verify Demographics */}
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">QC Step: Verify Demographics</Label>
+                            <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
+                            <div className="space-y-2">
+                              {qcDemographicItems.map(item => (
+                                <Button
+                                  key={item}
+                                  variant={eliminatedDemographics.includes(item) ? "destructive" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleEliminateItem(item, 'demographics')}
+                                  className="mr-2 mb-2"
+                                >
+                                  {eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                  {item}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* QC Flags */}
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">QC Flags</Label>
+                            <div className="space-y-2">
+                              {qcFlagItems.map(item => (
+                                <Button
+                                  key={item}
+                                  variant={eliminatedFlags.includes(item) ? "destructive" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleEliminateItem(item, 'flags')}
+                                  className="mr-2 mb-2"
+                                >
+                                  {eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                  {item}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* QC Tracker Status */}
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">QC Tracker Status</Label>
+                            <Label htmlFor="qc-status">Overall QC Status</Label>
+                            <Select value={qcStatus} onValueChange={setQcStatus}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="passed">Passed</SelectItem>
+                                <SelectItem value="failed">Failed</SelectItem>
+                                <SelectItem value="pending">Pending Review</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* QC Summary */}
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">QC Summary</Label>
+                            <div className="space-y-2">
+                              <div className="text-sm">
+                                <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - eliminatedDemographics.length}/{qcDemographicItems.length}
+                              </div>
+                              <div className="text-sm">
+                                <span className="font-medium">Flags Raised:</span> {eliminatedFlags.length}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Comments */}
+                          <div>
+                            <Label htmlFor="comments">Comments</Label>
+                            <Textarea
+                              id="comments"
+                              placeholder="Enter any additional comments..."
+                              value={getCurrentPdfData().comments}
+                              onChange={(e) => updateCurrentPdfData({comments: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </ScrollArea>
+                    )}
                   </TabsContent>
                 </Tabs>
 
