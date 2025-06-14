@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -150,20 +151,21 @@ const Utilization = () => {
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
   const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
-  const [isPageWiseTagging, setIsPageWiseTagging] = useState(false);
+  
+  // Page-wise utilization for non-split PDFs
+  const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
   
   // Shared fields between both PDFs
   const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
   const [customLabPartner, setCustomLabPartner] = useState('');
   
-  // Current active data (either main or selected split PDF)
+  // Main PDF data (for PDF-level info when not split)
   const [referenceId, setReferenceId] = useState('');
-  const [selectedServiceType, setSelectedServiceType] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
+  const [mainServiceType, setMainServiceType] = useState('');
+  const [mainComments, setMainComments] = useState('');
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const [expectedCount, setExpectedCount] = useState(0);
-  const [comments, setComments] = useState('');
   const [eliminatedDemographics, setEliminatedDemographics] = useState<string[]>([]);
   const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
   const [qcStatus, setQcStatus] = useState('');
@@ -171,19 +173,16 @@ const Utilization = () => {
 
   // Check if mandatory fields are filled
   const isMandatoryFieldsFilled = () => {
-    return selectedQuality.length > 0 && getCurrentPdfData().serviceType && selectedLabPartner;
+    return selectedQuality.length > 0 && getCurrentServiceType() && selectedLabPartner;
   };
 
-  // Check if at least one utilization item is selected
+  // Check if at least one utilization item is selected for current page
   const hasUtilizationSelected = () => {
-    const currentData = getCurrentPdfData();
-    if (currentData.serviceType === 'Consult') return true; // Consult doesn't need utilization items
-    if (isPageWiseTagging && splitPdfs && selectedPdfForTagging) {
-      const currentPdf = splitPdfs[selectedPdfForTagging];
-      const currentPageUtilization = currentPdf.pageUtilization[currentPage];
-      return currentPageUtilization ? Object.values(currentPageUtilization.selectedItems).some(Boolean) : false;
-    }
-    return Object.values(currentData.selectedItems).some(Boolean);
+    const currentServiceType = getCurrentServiceType();
+    if (currentServiceType === 'Consult') return true; // Consult doesn't need utilization items
+    
+    const currentPageData = getCurrentPageData();
+    return currentPageData ? Object.values(currentPageData.selectedItems).some(Boolean) : false;
   };
 
   // Check if demographics verification has been started
@@ -191,93 +190,86 @@ const Utilization = () => {
     return eliminatedDemographics.length > 0;
   };
 
-  const getCurrentPdfData = () => {
-    console.log('getCurrentPdfData called - splitPdfs:', splitPdfs, 'selectedPdfForTagging:', selectedPdfForTagging, 'isPageWiseTagging:', isPageWiseTagging);
-    
+  const getCurrentServiceType = () => {
     if (splitPdfs && selectedPdfForTagging) {
-      if (isPageWiseTagging) {
-        const currentPdf = splitPdfs[selectedPdfForTagging];
-        const pageUtilization = currentPdf.pageUtilization[currentPage];
-        const result = {
-          referenceId: currentPdf.referenceId,
-          serviceType: currentPdf.serviceType,
-          expectedCount: pageUtilization?.expectedCount || 0,
-          selectedItems: pageUtilization?.selectedItems || {},
-          comments: pageUtilization?.comments || ''
-        };
-        console.log('getCurrentPdfData - page-wise result:', result);
-        return result;
-      }
-      const result = splitPdfs[selectedPdfForTagging];
-      console.log('getCurrentPdfData - PDF-level result:', result);
-      return result;
+      const currentPageData = getCurrentPageData();
+      return currentPageData?.serviceType || splitPdfs[selectedPdfForTagging].serviceType;
     }
-    const result = {
-      referenceId,
-      serviceType: selectedServiceType,
-      expectedCount,
-      selectedItems,
-      comments
-    };
-    console.log('getCurrentPdfData - main result:', result);
-    return result;
+    const currentPageData = getCurrentPageData();
+    return currentPageData?.serviceType || mainServiceType;
   };
 
-  const updateCurrentPdfData = (updates: Partial<any>) => {
+  const getCurrentPageData = (): PageUtilization | null => {
     if (splitPdfs && selectedPdfForTagging) {
-      if (isPageWiseTagging) {
-        // For page-wise updates, don't update service type at page level
-        const pageUpdates = { ...updates };
-        delete pageUpdates.serviceType; // Service type is PDF-level, not page-level
+      return splitPdfs[selectedPdfForTagging].pageUtilization[currentPage] || null;
+    }
+    return mainPageUtilization[currentPage] || null;
+  };
+
+  const updateCurrentPageData = (updates: Partial<PageUtilization>) => {
+    if (splitPdfs && selectedPdfForTagging) {
+      setSplitPdfs(prev => {
+        if (!prev) return null;
+        const currentPdf = prev[selectedPdfForTagging];
+        const currentPageData = currentPdf.pageUtilization[currentPage] || {
+          serviceType: currentPdf.serviceType,
+          selectedItems: {},
+          expectedCount: 0,
+          comments: ''
+        };
         
-        setSplitPdfs(prev => {
-          if (!prev) return null;
-          const currentPdf = prev[selectedPdfForTagging];
-          const updatedPageUtilization = {
-            ...currentPdf.pageUtilization,
-            [currentPage]: {
-              ...currentPdf.pageUtilization[currentPage],
-              ...pageUpdates
+        return {
+          ...prev,
+          [selectedPdfForTagging]: {
+            ...currentPdf,
+            pageUtilization: {
+              ...currentPdf.pageUtilization,
+              [currentPage]: {
+                ...currentPageData,
+                ...updates
+              }
             }
-          };
-          
-          // Handle PDF-level updates (like service type)
-          const pdfLevelUpdates: any = {};
-          if (updates.serviceType !== undefined) {
-            pdfLevelUpdates.serviceType = updates.serviceType;
           }
-          
-          return {
-            ...prev,
-            [selectedPdfForTagging]: {
-              ...currentPdf,
-              ...pdfLevelUpdates,
-              pageUtilization: updatedPageUtilization
-            }
-          };
-        });
-      } else {
-        // Update PDF-level data
-        setSplitPdfs(prev => prev ? {
+        };
+      });
+    } else {
+      setMainPageUtilization(prev => {
+        const currentPageData = prev[currentPage] || {
+          serviceType: mainServiceType,
+          selectedItems: {},
+          expectedCount: 0,
+          comments: ''
+        };
+        
+        return {
+          ...prev,
+          [currentPage]: {
+            ...currentPageData,
+            ...updates
+          }
+        };
+      });
+    }
+  };
+
+  const updateServiceType = (serviceType: string) => {
+    if (splitPdfs && selectedPdfForTagging) {
+      setSplitPdfs(prev => {
+        if (!prev) return null;
+        return {
           ...prev,
           [selectedPdfForTagging]: {
             ...prev[selectedPdfForTagging],
-            ...updates
+            serviceType
           }
-        } : null);
-      }
-    } else {
-      // Update main data
-      Object.entries(updates).forEach(([key, value]) => {
-        switch (key) {
-          case 'referenceId': setReferenceId(value); break;
-          case 'serviceType': setSelectedServiceType(value); break;
-          case 'expectedCount': setExpectedCount(value); break;
-          case 'selectedItems': setSelectedItems(value); break;
-          case 'comments': setComments(value); break;
-        }
+        };
       });
+    } else {
+      setMainServiceType(serviceType);
     }
+    
+    // Also update current page data
+    updateCurrentPageData({ serviceType });
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,13 +301,11 @@ const Utilization = () => {
     setSelectedPages([]);
     setSplitPdfs(null);
     setSelectedPdfForTagging(null);
-    setIsPageWiseTagging(false);
     
     // Reset form data for new file
-    setSelectedServiceType('');
-    setSelectedItems({});
-    setExpectedCount(0);
-    setComments('');
+    setMainServiceType('');
+    setMainPageUtilization({});
+    setMainComments('');
     setEliminatedDemographics([]);
     setEliminatedFlags([]);
     setQcStatus('');
@@ -368,11 +358,10 @@ const Utilization = () => {
     setSelectedPages([]);
     setSelectedPdfForTagging('pdf1'); // Default to first PDF
     
-    // Clear main data except shared fields (quality and lab partner remain)
-    setSelectedServiceType('');
-    setExpectedCount(0);
-    setSelectedItems({});
-    setComments('');
+    // Clear main data except shared fields
+    setMainServiceType('');
+    setMainPageUtilization({});
+    setMainComments('');
     
     toast({
       title: "PDF Split Successfully",
@@ -381,56 +370,49 @@ const Utilization = () => {
   };
 
   const handlePdfSelection = (pdfKey: 'pdf1' | 'pdf2') => {
-    console.log('handlePdfSelection called with:', pdfKey);
     if (!splitPdfs) return;
     
     setSelectedPdfForTagging(pdfKey);
     const pdfData = splitPdfs[pdfKey];
-    console.log('Selected PDF data:', pdfData);
     
     // Set current page to first page of selected PDF
     setCurrentPage(pdfData.pages[0]);
     
-    // Load PDF-specific data (quality and lab partner remain shared)
+    // Load PDF-specific reference ID
     setReferenceId(pdfData.referenceId);
-    
-    // Enable page-wise tagging for split PDFs
-    setIsPageWiseTagging(true);
-    console.log('Page-wise tagging enabled for PDF:', pdfKey);
   };
 
   const handlePageNavigation = (direction: 'prev' | 'next') => {
-    if (!splitPdfs || !selectedPdfForTagging) {
+    if (splitPdfs && selectedPdfForTagging) {
+      const currentPdf = splitPdfs[selectedPdfForTagging];
+      const currentIndex = currentPdf.pages.indexOf(currentPage);
+      
+      if (direction === 'prev' && currentIndex > 0) {
+        setCurrentPage(currentPdf.pages[currentIndex - 1]);
+      } else if (direction === 'next' && currentIndex < currentPdf.pages.length - 1) {
+        setCurrentPage(currentPdf.pages[currentIndex + 1]);
+      }
+    } else {
       // Regular navigation for non-split PDFs
       if (direction === 'prev') {
         setCurrentPage(Math.max(1, currentPage - 1));
       } else {
         setCurrentPage(Math.min(totalPages, currentPage + 1));
       }
-      return;
-    }
-
-    const currentPdf = splitPdfs[selectedPdfForTagging];
-    const currentIndex = currentPdf.pages.indexOf(currentPage);
-    
-    if (direction === 'prev' && currentIndex > 0) {
-      setCurrentPage(currentPdf.pages[currentIndex - 1]);
-    } else if (direction === 'next' && currentIndex < currentPdf.pages.length - 1) {
-      setCurrentPage(currentPdf.pages[currentIndex + 1]);
     }
   };
 
   const getNavigationLimits = () => {
-    if (!splitPdfs || !selectedPdfForTagging) {
-      return { isFirst: currentPage === 1, isLast: currentPage === totalPages };
+    if (splitPdfs && selectedPdfForTagging) {
+      const currentPdf = splitPdfs[selectedPdfForTagging];
+      const currentIndex = currentPdf.pages.indexOf(currentPage);
+      return {
+        isFirst: currentIndex === 0,
+        isLast: currentIndex === currentPdf.pages.length - 1
+      };
     }
     
-    const currentPdf = splitPdfs[selectedPdfForTagging];
-    const currentIndex = currentPdf.pages.indexOf(currentPage);
-    return {
-      isFirst: currentIndex === 0,
-      isLast: currentIndex === currentPdf.pages.length - 1
-    };
+    return { isFirst: currentPage === 1, isLast: currentPage === totalPages };
   };
 
   const handleQualityChange = (quality: string) => {
@@ -443,24 +425,26 @@ const Utilization = () => {
 
   const handleServiceItemToggle = (category: string, item: string) => {
     const key = `${category}-${item}`;
-    const currentData = getCurrentPdfData();
-    const newSelected = !currentData.selectedItems[key];
+    const currentPageData = getCurrentPageData();
+    const currentSelectedItems = currentPageData?.selectedItems || {};
+    const newSelected = !currentSelectedItems[key];
     
     const newSelectedItems = {
-      ...currentData.selectedItems,
+      ...currentSelectedItems,
       [key]: newSelected
     };
 
     // Auto-increment expected count for pathology items
-    let newExpectedCount = currentData.expectedCount;
-    if (currentData.serviceType === 'Pathology' && newSelected) {
-      newExpectedCount = currentData.expectedCount + 1;
-    } else if (currentData.serviceType === 'Pathology' && !newSelected) {
-      newExpectedCount = Math.max(0, currentData.expectedCount - 1);
+    const currentServiceType = getCurrentServiceType();
+    let newExpectedCount = currentPageData?.expectedCount || 0;
+    if (currentServiceType === 'Pathology' && newSelected) {
+      newExpectedCount = newExpectedCount + 1;
+    } else if (currentServiceType === 'Pathology' && !newSelected) {
+      newExpectedCount = Math.max(0, newExpectedCount - 1);
     }
 
     // Auto-select parent category if any child is selected
-    const currentServices = currentData.serviceType === 'Pathology' ? pathologyServices : otherServices;
+    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     const hasAnySelected = categoryItems.some(childItem => newSelectedItems[`${category}-${childItem}`]);
     
@@ -471,19 +455,21 @@ const Utilization = () => {
       newSelectedItems[category] = false;
     }
     
-    updateCurrentPdfData({ 
+    updateCurrentPageData({ 
       selectedItems: newSelectedItems,
       expectedCount: newExpectedCount
     });
   };
 
   const handleCategoryToggle = (category: string) => {
-    const currentData = getCurrentPdfData();
-    const currentServices = currentData.serviceType === 'Pathology' ? pathologyServices : otherServices;
+    const currentPageData = getCurrentPageData();
+    const currentSelectedItems = currentPageData?.selectedItems || {};
+    const currentServiceType = getCurrentServiceType();
+    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
-    const allSelected = categoryItems.every(item => currentData.selectedItems[`${category}-${item}`]);
+    const allSelected = categoryItems.every(item => currentSelectedItems[`${category}-${item}`]);
     
-    const newSelectedItems = { ...currentData.selectedItems };
+    const newSelectedItems = { ...currentSelectedItems };
     let expectedCountChange = 0;
     
     // Toggle category header
@@ -493,11 +479,11 @@ const Utilization = () => {
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
       const newValue = !allSelected;
-      const oldValue = currentData.selectedItems[key];
+      const oldValue = currentSelectedItems[key];
       newSelectedItems[key] = newValue;
       
       // Update expected count for pathology
-      if (currentData.serviceType === 'Pathology') {
+      if (currentServiceType === 'Pathology') {
         if (newValue && !oldValue) {
           expectedCountChange += 1;
         } else if (!newValue && oldValue) {
@@ -506,9 +492,10 @@ const Utilization = () => {
       }
     });
     
-    updateCurrentPdfData({ 
+    const currentExpectedCount = currentPageData?.expectedCount || 0;
+    updateCurrentPageData({ 
       selectedItems: newSelectedItems,
-      expectedCount: Math.max(0, currentData.expectedCount + expectedCountChange)
+      expectedCount: Math.max(0, currentExpectedCount + expectedCountChange)
     });
   };
 
@@ -524,25 +511,17 @@ const Utilization = () => {
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent, action: () => void) => {
-    if (event.key === 'Enter') {
-      action();
-    }
-  };
-
   const handleDelete = () => {
     setUploadedFiles([]);
     setSelectedFileIndex(0);
     setReferenceId('');
     setSelectedQuality([]);
-    setSelectedServiceType('');
-    setSelectedItems({});
-    setExpectedCount(0);
+    setMainServiceType('');
+    setMainPageUtilization({});
     setSplitPdfs(null);
     setSelectedPages([]);
     setSelectedLabPartner('');
     setCustomLabPartner('');
-    setIsPageWiseTagging(false);
     toast({
       title: "Data Cleared",
       description: "All data has been cleared",
@@ -550,16 +529,13 @@ const Utilization = () => {
   };
 
   const filteredServices = () => {
-    const currentData = getCurrentPdfData();
-    console.log('filteredServices - currentData.serviceType:', currentData.serviceType);
+    const currentServiceType = getCurrentServiceType();
     
-    if (!currentData.serviceType) {
-      console.log('filteredServices - no service type, returning empty');
+    if (!currentServiceType) {
       return {};
     }
     
-    const currentServices = currentData.serviceType === 'Pathology' ? pathologyServices : otherServices;
-    console.log('filteredServices - currentServices:', Object.keys(currentServices));
+    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     
     if (!searchTerm) return currentServices;
     
@@ -573,19 +549,15 @@ const Utilization = () => {
         filtered[category] = filteredItems;
       }
     });
-    console.log('filteredServices - filtered result:', Object.keys(filtered));
     return filtered;
   };
 
   const renderServiceItems = () => {
-    const currentData = getCurrentPdfData();
-    
-    console.log('renderServiceItems - currentData:', currentData);
-    console.log('renderServiceItems - selectedPdfForTagging:', selectedPdfForTagging);
-    console.log('renderServiceItems - splitPdfs:', splitPdfs);
+    const currentServiceType = getCurrentServiceType();
+    const currentPageData = getCurrentPageData();
     
     // For Consult, show a message that no utilization items are needed
-    if (currentData.serviceType === 'Consult') {
+    if (currentServiceType === 'Consult') {
       return (
         <div className="text-center py-8 text-gray-500">
           <p>No utilization items required for Consult service type.</p>
@@ -594,7 +566,7 @@ const Utilization = () => {
     }
 
     // If no service type is selected, show a message
-    if (!currentData.serviceType) {
+    if (!currentServiceType) {
       return (
         <div className="text-center py-8 text-gray-500">
           <p>Please select a service type to view utilization items.</p>
@@ -603,10 +575,8 @@ const Utilization = () => {
     }
 
     const services = filteredServices();
-    console.log('renderServiceItems - services from filteredServices:', services);
     
     if (!services || Object.keys(services).length === 0) {
-      console.log('renderServiceItems - no services found');
       return (
         <div className="text-center py-8 text-gray-500">
           <p>No services found for the selected type.</p>
@@ -614,11 +584,10 @@ const Utilization = () => {
       );
     }
     
-    console.log('renderServiceItems - rendering services:', Object.keys(services));
-    
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
-      const selectedCount = categoryItemIds.filter(id => currentData.selectedItems[id]).length;
+      const selectedItems = currentPageData?.selectedItems || {};
+      const selectedCount = categoryItemIds.filter(id => selectedItems[id]).length;
       const hasAnySelected = selectedCount > 0;
 
       return (
@@ -636,7 +605,7 @@ const Utilization = () => {
             {items.map(item => (
               <div key={item} className="flex items-center space-x-2">
                 <Checkbox
-                  checked={currentData.selectedItems[`${category}-${item}`] || false}
+                  checked={selectedItems[`${category}-${item}`] || false}
                   onCheckedChange={() => handleServiceItemToggle(category, item)}
                 />
                 <Label className="text-sm cursor-pointer" onClick={() => handleServiceItemToggle(category, item)}>
@@ -714,24 +683,29 @@ const Utilization = () => {
                   </div>
                 )}
 
-                {/* Service Type Selection for Entire PDF - Show after upload but before split */}
-                {uploadedFiles.length > 0 && !splitPdfs && (
+                {/* Service Type Selection for Entire PDF/Split PDF */}
+                {uploadedFiles.length > 0 && (
                   <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                    <Label className="text-base font-medium mb-2 block">Service Type (Entire PDF) *</Label>
+                    <Label className="text-base font-medium mb-2 block">
+                      Service Type {splitPdfs && selectedPdfForTagging ? `for ${selectedPdfForTagging.toUpperCase()}` : '(Entire PDF)'} *
+                    </Label>
                     <div className="flex gap-2">
-                      {serviceTypeOptions.map(type => (
-                        <Button
-                          key={type}
-                          variant={selectedServiceType === type ? "default" : "outline"}
-                          onClick={() => setSelectedServiceType(type)}
-                          size="sm"
-                        >
-                          {type}
-                        </Button>
-                      ))}
+                      {serviceTypeOptions.map(type => {
+                        const currentServiceType = getCurrentServiceType();
+                        return (
+                          <Button
+                            key={type}
+                            variant={currentServiceType === type ? "default" : "outline"}
+                            onClick={() => updateServiceType(type)}
+                            size="sm"
+                          >
+                            {type}
+                          </Button>
+                        );
+                      })}
                     </div>
-                    {!selectedServiceType && (
-                      <p className="text-sm text-gray-600 mt-1">Please select a service type for the entire PDF</p>
+                    {!getCurrentServiceType() && (
+                      <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
                     )}
                   </div>
                 )}
@@ -754,34 +728,6 @@ const Utilization = () => {
                         </Button>
                       </div>
                     </div>
-
-                    {/* Service Type Selection - Show for split PDFs */}
-                    {splitPdfs && selectedPdfForTagging && (
-                      <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                        <Label className="text-base font-medium mb-2 block">Service Type for {selectedPdfForTagging.toUpperCase()} *</Label>
-                        <div className="flex gap-2">
-                          {serviceTypeOptions.map(type => {
-                            const currentData = getCurrentPdfData();
-                            return (
-                              <Button
-                                key={type}
-                                variant={currentData.serviceType === type ? "default" : "outline"}
-                                onClick={() => {
-                                  console.log('Setting service type:', type, 'for PDF:', selectedPdfForTagging);
-                                  updateCurrentPdfData({serviceType: type});
-                                }}
-                                size="sm"
-                              >
-                                {type}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                        {!getCurrentPdfData().serviceType && (
-                          <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
-                        )}
-                      </div>
-                    )}
 
                     {/* Page Selection for Splitting - Only show if not split yet */}
                     {!splitPdfs && (
@@ -822,6 +768,9 @@ const Utilization = () => {
                         <span className="text-gray-500 text-lg font-medium">
                           Page {currentPage}
                         </span>
+                        <div className="mt-2 text-xs text-blue-600 font-medium">
+                          Page-wise Tagging Enabled
+                        </div>
                         <div className="mt-4 space-y-2">
                           <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
                           <div className="w-24 h-2 bg-gray-200 rounded mx-auto"></div>
@@ -925,22 +874,22 @@ const Utilization = () => {
                     <Label htmlFor="reference-id">Reference ID</Label>
                     <Input
                       id="reference-id"
-                      value={getCurrentPdfData().referenceId}
-                      onChange={(e) => updateCurrentPdfData({referenceId: e.target.value})}
+                      value={referenceId}
+                      onChange={(e) => setReferenceId(e.target.value)}
                       placeholder="Auto-filled from PDF name"
                     />
                   </div>
 
                   {/* Expected Count */}
                   <div>
-                    <Label htmlFor="expected-count">Expected Count</Label>
+                    <Label htmlFor="expected-count">Expected Count (Page {currentPage})</Label>
                     <Input
                       id="expected-count"
                       type="number"
-                      value={getCurrentPdfData().expectedCount.toString()}
-                      onChange={(e) => updateCurrentPdfData({expectedCount: Number(e.target.value)})}
+                      value={(getCurrentPageData()?.expectedCount || 0).toString()}
+                      onChange={(e) => updateCurrentPageData({expectedCount: Number(e.target.value)})}
                       placeholder="Auto-calculated for pathology"
-                      readOnly={getCurrentPdfData().serviceType === 'Pathology'}
+                      readOnly={getCurrentServiceType() === 'Pathology'}
                     />
                   </div>
                 </div>
@@ -1001,7 +950,7 @@ const Utilization = () => {
             {/* Bottom Right - Utilization & QC */}
             <Card className="flex-1">
               <CardHeader>
-                <CardTitle>Utilization & QC Verification</CardTitle>
+                <CardTitle>Utilization & QC Verification (Page {currentPage})</CardTitle>
               </CardHeader>
               <CardContent className="h-full">
                 <Tabs defaultValue="utilization" className="h-full flex flex-col">
@@ -1027,7 +976,7 @@ const Utilization = () => {
                     ) : (
                       <div className="space-y-4 h-full flex flex-col">
                         {/* Search within Utilization Items - Only show for non-Consult types */}
-                        {getCurrentPdfData().serviceType && getCurrentPdfData().serviceType !== 'Consult' && (
+                        {getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
@@ -1042,19 +991,29 @@ const Utilization = () => {
                         <ScrollArea className="flex-1">
                           <div>
                             <h3 className="font-medium mb-3">
-                              Utilization ({getCurrentPdfData().serviceType || 'Select Service Type'}) *
-                              {isPageWiseTagging && getCurrentPdfData().serviceType && (
-                                <span className="text-sm font-normal text-blue-600 block">
-                                  Page {currentPage}
-                                </span>
-                              )}
+                              Utilization ({getCurrentServiceType() || 'Select Service Type'}) *
+                              <span className="text-sm font-normal text-blue-600 block">
+                                Page {currentPage}
+                              </span>
                             </h3>
-                            {!hasUtilizationSelected() && getCurrentPdfData().serviceType && getCurrentPdfData().serviceType !== 'Consult' && (
-                              <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
+                            {!hasUtilizationSelected() && getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
+                              <p className="text-sm text-red-600 mb-3">Please select at least one utilization item for this page</p>
                             )}
                             {renderServiceItems()}
                           </div>
                         </ScrollArea>
+
+                        {/* Comments for current page */}
+                        <div>
+                          <Label htmlFor="page-comments">Comments (Page {currentPage})</Label>
+                          <Textarea
+                            id="page-comments"
+                            placeholder="Enter comments for this page..."
+                            value={getCurrentPageData()?.comments || ''}
+                            onChange={(e) => updateCurrentPageData({comments: e.target.value})}
+                            rows={2}
+                          />
+                        </div>
                       </div>
                     )}
                   </TabsContent>
@@ -1129,7 +1088,7 @@ const Utilization = () => {
                             </Select>
                           </div>
 
-                          {/* QC Summary - Fixed calculation */}
+                          {/* QC Summary */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Summary</Label>
                             <div className="space-y-2">
@@ -1140,17 +1099,6 @@ const Utilization = () => {
                                 <span className="font-medium">Flags Raised:</span> {eliminatedFlags.length}
                               </div>
                             </div>
-                          </div>
-
-                          {/* Comments */}
-                          <div>
-                            <Label htmlFor="comments">Comments</Label>
-                            <Textarea
-                              id="comments"
-                              placeholder="Enter any additional comments..."
-                              value={getCurrentPdfData().comments}
-                              onChange={(e) => updateCurrentPdfData({comments: e.target.value})}
-                            />
                           </div>
                         </div>
                       </ScrollArea>
