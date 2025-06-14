@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -171,7 +172,7 @@ const Utilization = () => {
 
   // Check if mandatory fields are filled
   const isMandatoryFieldsFilled = () => {
-    return selectedQuality.length > 0 && selectedServiceType && selectedLabPartner;
+    return selectedQuality.length > 0 && getCurrentPdfData().serviceType && selectedLabPartner;
   };
 
   // Check if at least one utilization item is selected
@@ -198,7 +199,7 @@ const Utilization = () => {
         const pageUtilization = currentPdf.pageUtilization[currentPage];
         return {
           referenceId: currentPdf.referenceId,
-          serviceType: currentPdf.serviceType, // Use PDF-level service type, not page-level
+          serviceType: currentPdf.serviceType,
           expectedCount: pageUtilization?.expectedCount || 0,
           selectedItems: pageUtilization?.selectedItems || {},
           comments: pageUtilization?.comments || ''
@@ -559,6 +560,10 @@ const Utilization = () => {
   const renderServiceItems = () => {
     const currentData = getCurrentPdfData();
     
+    console.log('renderServiceItems - currentData:', currentData);
+    console.log('renderServiceItems - selectedPdfForTagging:', selectedPdfForTagging);
+    console.log('renderServiceItems - splitPdfs:', splitPdfs);
+    
     // For Consult, show a message that no utilization items are needed
     if (currentData.serviceType === 'Consult') {
       return (
@@ -578,6 +583,14 @@ const Utilization = () => {
     }
 
     const services = filteredServices();
+    
+    if (Object.keys(services).length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <p>No services found for the selected type.</p>
+        </div>
+      );
+    }
     
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
@@ -696,7 +709,7 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Service Type Selection - Now shown after split */}
+                    {/* Service Type Selection - Show for split PDFs */}
                     {splitPdfs && selectedPdfForTagging && (
                       <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                         <Label className="text-base font-medium mb-2 block">Service Type for {selectedPdfForTagging.toUpperCase()} *</Label>
@@ -707,7 +720,10 @@ const Utilization = () => {
                               <Button
                                 key={type}
                                 variant={currentData.serviceType === type ? "default" : "outline"}
-                                onClick={() => updateCurrentPdfData({serviceType: type})}
+                                onClick={() => {
+                                  console.log('Setting service type:', type, 'for PDF:', selectedPdfForTagging);
+                                  updateCurrentPdfData({serviceType: type});
+                                }}
                                 size="sm"
                               >
                                 {type}
