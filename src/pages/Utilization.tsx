@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -499,7 +498,7 @@ const Utilization = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
           {/* Left Side - PDF Upload and Preview */}
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col">
@@ -687,7 +686,7 @@ const Utilization = () => {
           </div>
 
           {/* Right Side - Form Fields and Utilization */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
+          <div className="lg:col-span-1 flex flex-col gap-4">
             {/* Top Right - Form Fields */}
             <Card>
               <CardHeader>
