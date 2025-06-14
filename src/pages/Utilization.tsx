@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -1196,7 +1197,7 @@ const Utilization = () => {
                           <Label htmlFor="page-comments">Comments (Page {currentPage})</Label>
                           <Textarea
                             id="page-comments"
-                            placeholder="Enter comments for this page..."
+                            placeholder="Enter any additional notes or observations for this page..."
                             value={getCurrentPageData()?.comments || ''}
                             onChange={(e) => updateCurrentPageData({comments: e.target.value})}
                             rows={2}
