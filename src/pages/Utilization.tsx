@@ -121,6 +121,12 @@ interface PageUtilization {
   comments: string;
 }
 
+interface QCVerification {
+  eliminatedDemographics: string[];
+  eliminatedFlags: string[];
+  qcStatus: string;
+}
+
 interface SplitPdfData {
   pdf1: {
     pages: number[];
@@ -130,6 +136,7 @@ interface SplitPdfData {
     selectedItems: Record<string, boolean>;
     comments: string;
     pageUtilization: Record<number, PageUtilization>;
+    qcVerification: QCVerification;
   };
   pdf2: {
     pages: number[];
@@ -139,6 +146,7 @@ interface SplitPdfData {
     selectedItems: Record<string, boolean>;
     comments: string;
     pageUtilization: Record<number, PageUtilization>;
+    qcVerification: QCVerification;
   };
 }
 
@@ -154,6 +162,13 @@ const Utilization = () => {
   // Page-wise utilization for non-split PDFs
   const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
   
+  // QC Verification for main PDF (non-split)
+  const [mainQCVerification, setMainQCVerification] = useState<QCVerification>({
+    eliminatedDemographics: [],
+    eliminatedFlags: [],
+    qcStatus: ''
+  });
+  
   // Shared fields between both PDFs
   const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
@@ -165,10 +180,39 @@ const Utilization = () => {
   const [mainComments, setMainComments] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [eliminatedDemographics, setEliminatedDemographics] = useState<string[]>([]);
-  const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
-  const [qcStatus, setQcStatus] = useState('');
   const { toast } = useToast();
+
+  // Helper function to get current QC verification data
+  const getCurrentQCVerification = (): QCVerification => {
+    if (splitPdfs && selectedPdfForTagging) {
+      return splitPdfs[selectedPdfForTagging].qcVerification;
+    }
+    return mainQCVerification;
+  };
+
+  // Helper function to update current QC verification data
+  const updateCurrentQCVerification = (updates: Partial<QCVerification>) => {
+    if (splitPdfs && selectedPdfForTagging) {
+      setSplitPdfs(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          [selectedPdfForTagging]: {
+            ...prev[selectedPdfForTagging],
+            qcVerification: {
+              ...prev[selectedPdfForTagging].qcVerification,
+              ...updates
+            }
+          }
+        };
+      });
+    } else {
+      setMainQCVerification(prev => ({
+        ...prev,
+        ...updates
+      }));
+    }
+  };
 
   // Helper function to calculate total expected count for a PDF
   const getTotalExpectedCount = () => {
@@ -225,7 +269,8 @@ const Utilization = () => {
 
   // Check if demographics verification has been started
   const isDemographicsStarted = () => {
-    return eliminatedDemographics.length > 0;
+    const currentQC = getCurrentQCVerification();
+    return currentQC.eliminatedDemographics.length > 0;
   };
 
   const getCurrentServiceType = () => {
@@ -344,9 +389,11 @@ const Utilization = () => {
     setMainServiceType('');
     setMainPageUtilization({});
     setMainComments('');
-    setEliminatedDemographics([]);
-    setEliminatedFlags([]);
-    setQcStatus('');
+    setMainQCVerification({
+      eliminatedDemographics: [],
+      eliminatedFlags: [],
+      qcStatus: ''
+    });
   };
 
   const handlePageSelection = (pageNum: number) => {
@@ -379,7 +426,12 @@ const Utilization = () => {
         expectedCount: 0,
         selectedItems: {},
         comments: '',
-        pageUtilization: {}
+        pageUtilization: {},
+        qcVerification: {
+          eliminatedDemographics: [],
+          eliminatedFlags: [],
+          qcStatus: ''
+        }
       },
       pdf2: {
         pages: pdf2Pages,
@@ -388,7 +440,12 @@ const Utilization = () => {
         expectedCount: 0,
         selectedItems: {},
         comments: '',
-        pageUtilization: {}
+        pageUtilization: {},
+        qcVerification: {
+          eliminatedDemographics: [],
+          eliminatedFlags: [],
+          qcStatus: ''
+        }
       }
     };
 
@@ -400,6 +457,11 @@ const Utilization = () => {
     setMainServiceType('');
     setMainPageUtilization({});
     setMainComments('');
+    setMainQCVerification({
+      eliminatedDemographics: [],
+      eliminatedFlags: [],
+      qcStatus: ''
+    });
     
     toast({
       title: "PDF Split Successfully",
@@ -589,14 +651,20 @@ const Utilization = () => {
   };
 
   const handleEliminateItem = (item: string, type: 'demographics' | 'flags') => {
+    const currentQC = getCurrentQCVerification();
+    
     if (type === 'demographics') {
-      setEliminatedDemographics(prev => 
-        prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
-      );
+      const newEliminatedDemographics = currentQC.eliminatedDemographics.includes(item) 
+        ? currentQC.eliminatedDemographics.filter(i => i !== item)
+        : [...currentQC.eliminatedDemographics, item];
+      
+      updateCurrentQCVerification({ eliminatedDemographics: newEliminatedDemographics });
     } else {
-      setEliminatedFlags(prev => 
-        prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]
-      );
+      const newEliminatedFlags = currentQC.eliminatedFlags.includes(item)
+        ? currentQC.eliminatedFlags.filter(i => i !== item)
+        : [...currentQC.eliminatedFlags, item];
+      
+      updateCurrentQCVerification({ eliminatedFlags: newEliminatedFlags });
     }
   };
 
@@ -611,6 +679,11 @@ const Utilization = () => {
     setSelectedPages([]);
     setSelectedLabPartner('');
     setCustomLabPartner('');
+    setMainQCVerification({
+      eliminatedDemographics: [],
+      eliminatedFlags: [],
+      qcStatus: ''
+    });
     toast({
       title: "Data Cleared",
       description: "All data has been cleared",
@@ -724,6 +797,7 @@ const Utilization = () => {
   };
 
   const { isFirst, isLast } = getNavigationLimits();
+  const currentQC = getCurrentQCVerification();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1057,13 +1131,20 @@ const Utilization = () => {
             {/* Bottom Right - Utilization & QC */}
             <Card className="flex-1">
               <CardHeader>
-                <CardTitle>Utilization & QC Verification (Page {currentPage})</CardTitle>
+                <CardTitle>
+                  Utilization & QC Verification
+                  {splitPdfs && selectedPdfForTagging && (
+                    <span className="text-sm font-normal text-blue-600 block">
+                      {selectedPdfForTagging.toUpperCase()}
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent className="h-full">
                 <Tabs defaultValue="utilization" className="h-full flex flex-col">
                   <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
-                      Utilization Tagging *
+                      Utilization Tagging * (Page {currentPage})
                       {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
                     </TabsTrigger>
                     <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled() || !hasUtilizationSelected()}>
@@ -1149,12 +1230,12 @@ const Utilization = () => {
                               {qcDemographicItems.map(item => (
                                 <Button
                                   key={item}
-                                  variant={eliminatedDemographics.includes(item) ? "destructive" : "outline"}
+                                  variant={currentQC.eliminatedDemographics.includes(item) ? "destructive" : "outline"}
                                   size="sm"
                                   onClick={() => handleEliminateItem(item, 'demographics')}
                                   className="mr-2 mb-2"
                                 >
-                                  {eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                  {currentQC.eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
                                   {item}
                                 </Button>
                               ))}
@@ -1168,12 +1249,12 @@ const Utilization = () => {
                               {qcFlagItems.map(item => (
                                 <Button
                                   key={item}
-                                  variant={eliminatedFlags.includes(item) ? "destructive" : "outline"}
+                                  variant={currentQC.eliminatedFlags.includes(item) ? "destructive" : "outline"}
                                   size="sm"
                                   onClick={() => handleEliminateItem(item, 'flags')}
                                   className="mr-2 mb-2"
                                 >
-                                  {eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
+                                  {currentQC.eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
                                   {item}
                                 </Button>
                               ))}
@@ -1183,7 +1264,10 @@ const Utilization = () => {
                           {/* QC Tracker Status */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Status *</Label>
-                            <Select value={qcStatus} onValueChange={setQcStatus}>
+                            <Select 
+                              value={currentQC.qcStatus} 
+                              onValueChange={(value) => updateCurrentQCVerification({ qcStatus: value })}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Status" />
                               </SelectTrigger>
@@ -1200,10 +1284,10 @@ const Utilization = () => {
                             <Label className="text-base font-medium mb-2 block">QC Summary</Label>
                             <div className="space-y-2">
                               <div className="text-sm">
-                                <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - eliminatedDemographics.length}/{qcDemographicItems.length}
+                                <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - currentQC.eliminatedDemographics.length}/{qcDemographicItems.length}
                               </div>
                               <div className="text-sm">
-                                <span className="font-medium">Flags Raised:</span> {eliminatedFlags.length}
+                                <span className="font-medium">Flags Raised:</span> {currentQC.eliminatedFlags.length}
                               </div>
                             </div>
                           </div>
