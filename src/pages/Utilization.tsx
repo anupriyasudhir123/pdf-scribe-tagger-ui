@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -560,6 +561,15 @@ const Utilization = () => {
       );
     }
 
+    // If no service type is selected, show a message
+    if (!currentData.serviceType) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <p>Please select a service type to view utilization items.</p>
+        </div>
+      );
+    }
+
     const services = filteredServices();
     
     return Object.entries(services).map(([category, items]) => {
@@ -958,22 +968,20 @@ const Utilization = () => {
                         )}
 
                         <ScrollArea className="flex-1">
-                          {getCurrentPdfData().serviceType && (
-                            <div>
-                              <h3 className="font-medium mb-3">
-                                Utilization ({getCurrentPdfData().serviceType}) *
-                                {isPageWiseTagging && (
-                                  <span className="text-sm font-normal text-blue-600 block">
-                                    Page {currentPage}
-                                  </span>
-                                )}
-                              </h3>
-                              {!hasUtilizationSelected() && getCurrentPdfData().serviceType !== 'Consult' && (
-                                <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
+                          <div>
+                            <h3 className="font-medium mb-3">
+                              Utilization ({getCurrentPdfData().serviceType}) *
+                              {isPageWiseTagging && (
+                                <span className="text-sm font-normal text-blue-600 block">
+                                  Page {currentPage}
+                                </span>
                               )}
-                              {renderServiceItems()}
-                            </div>
-                          )}
+                            </h3>
+                            {!hasUtilizationSelected() && getCurrentPdfData().serviceType !== 'Consult' && (
+                              <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
+                            )}
+                            {renderServiceItems()}
+                          </div>
                         </ScrollArea>
                       </div>
                     )}
