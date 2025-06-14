@@ -170,6 +170,45 @@ const Utilization = () => {
   const [qcStatus, setQcStatus] = useState('');
   const { toast } = useToast();
 
+  // Helper function to calculate total expected count for a PDF
+  const getTotalExpectedCount = () => {
+    if (splitPdfs && selectedPdfForTagging) {
+      const currentPdf = splitPdfs[selectedPdfForTagging];
+      let totalCount = 0;
+      
+      // Sum up all selected items across all pages of this PDF
+      Object.values(currentPdf.pageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              totalCount++;
+            }
+          }
+        });
+      });
+      
+      return totalCount;
+    } else {
+      // For non-split PDFs, sum across all pages
+      let totalCount = 0;
+      Object.values(mainPageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
+            // Only count actual utilization items, not category headers
+            const parts = key.split('-');
+            if (parts.length > 1) {
+              totalCount++;
+            }
+          }
+        });
+      });
+      
+      return totalCount;
+    }
+  };
+
   // Check if mandatory fields are filled
   const isMandatoryFieldsFilled = () => {
     return selectedQuality.length > 0 && getCurrentServiceType() && selectedLabPartner;
@@ -491,16 +530,8 @@ const Utilization = () => {
       [key]: newSelected
     };
 
-    // Auto-increment expected count for pathology items
-    const currentServiceType = getCurrentServiceType();
-    let newExpectedCount = currentPageData?.expectedCount || 0;
-    if (currentServiceType === 'Pathology' && newSelected) {
-      newExpectedCount = newExpectedCount + 1;
-    } else if (currentServiceType === 'Pathology' && !newSelected) {
-      newExpectedCount = Math.max(0, newExpectedCount - 1);
-    }
-
     // Auto-select parent category if any child is selected
+    const currentServiceType = getCurrentServiceType();
     const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     const hasAnySelected = categoryItems.some(childItem => newSelectedItems[`${category}-${childItem}`]);
@@ -513,8 +544,7 @@ const Utilization = () => {
     }
     
     updateCurrentPageData({ 
-      selectedItems: newSelectedItems,
-      expectedCount: newExpectedCount
+      selectedItems: newSelectedItems
     });
   };
 
@@ -543,7 +573,6 @@ const Utilization = () => {
     }
     
     const newSelectedItems = { ...currentSelectedItems };
-    let expectedCountChange = 0;
     
     // Toggle category header
     newSelectedItems[category] = !allSelected;
@@ -551,24 +580,11 @@ const Utilization = () => {
     // Toggle all items in category
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
-      const newValue = !allSelected;
-      const oldValue = currentSelectedItems[key];
-      newSelectedItems[key] = newValue;
-      
-      // Update expected count for pathology
-      if (currentServiceType === 'Pathology') {
-        if (newValue && !oldValue) {
-          expectedCountChange += 1;
-        } else if (!newValue && oldValue) {
-          expectedCountChange -= 1;
-        }
-      }
+      newSelectedItems[key] = !allSelected;
     });
     
-    const currentExpectedCount = currentPageData?.expectedCount || 0;
     updateCurrentPageData({ 
-      selectedItems: newSelectedItems,
-      expectedCount: Math.max(0, currentExpectedCount + expectedCountChange)
+      selectedItems: newSelectedItems
     });
   };
 
@@ -968,16 +984,19 @@ const Utilization = () => {
                     />
                   </div>
 
-                  {/* Expected Count */}
+                  {/* Expected Count - Now shows total for PDF */}
                   <div>
-                    <Label htmlFor="expected-count">Expected Count (Page {currentPage})</Label>
+                    <Label htmlFor="expected-count">
+                      Expected Count 
+                      {splitPdfs && selectedPdfForTagging ? ` (${selectedPdfForTagging.toUpperCase()} Total)` : ' (Total)'}
+                    </Label>
                     <Input
                       id="expected-count"
                       type="number"
-                      value={(getCurrentPageData()?.expectedCount || 0).toString()}
-                      onChange={(e) => updateCurrentPageData({expectedCount: Number(e.target.value)})}
-                      placeholder="Auto-calculated for pathology"
-                      readOnly={getCurrentServiceType() === 'Pathology'}
+                      value={getTotalExpectedCount().toString()}
+                      readOnly
+                      className="bg-gray-50"
+                      placeholder="Auto-calculated from selections"
                     />
                   </div>
                 </div>
