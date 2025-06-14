@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -315,8 +316,6 @@ const Utilization = () => {
       ...selectedItems,
       [key]: newSelected
     };
-    
-    setSelectedItems(newSelectedItems);
 
     // Auto-increment expected count for pathology items
     if (selectedServiceType === 'Pathology' && newSelected) {
@@ -332,16 +331,13 @@ const Utilization = () => {
     
     // Update parent category selection based on children
     if (hasAnySelected && !newSelectedItems[category]) {
-      setSelectedItems(prev => ({
-        ...prev,
-        [category]: true
-      }));
+      newSelectedItems[category] = true;
     } else if (!hasAnySelected && newSelectedItems[category]) {
-      setSelectedItems(prev => ({
-        ...prev,
-        [category]: false
-      }));
+      newSelectedItems[category] = false;
     }
+    
+    setSelectedItems(newSelectedItems);
+    updateCurrentPdfData({ selectedItems: newSelectedItems });
   };
 
   const handleCategoryToggle = (category: string) => {
@@ -370,6 +366,7 @@ const Utilization = () => {
       }
     });
     setSelectedItems(newSelectedItems);
+    updateCurrentPdfData({ selectedItems: newSelectedItems });
   };
 
   const handleEliminateItem = (item: string, type: 'demographics' | 'flags') => {
@@ -542,7 +539,7 @@ const Utilization = () => {
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
                             >
-                              <div className="bg-white h-24 rounded border flex items-center justify-center">
+                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center p-2">
                                 <FileText className="h-8 w-8 text-gray-400 mb-1" />
                                 <div className="text-xs text-gray-500">Page {pageNum}</div>
                                 <div className="w-full h-2 bg-gray-100 mt-2 rounded"></div>
@@ -630,9 +627,6 @@ const Utilization = () => {
                             )}
                           </div>
                         </div>
-                        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
-                          <strong>Note:</strong> Report Quality and Executing Lab Partner are shared between both PDFs
-                        </div>
                       </div>
                     )}
                   </div>
@@ -652,7 +646,7 @@ const Utilization = () => {
 
                 {/* Report Quality - Shared between PDFs */}
                 <div>
-                  <Label className="text-base font-medium">Report Quality * {splitPdfs && <span className="text-sm text-blue-600">(Shared)</span>}</Label>
+                  <Label className="text-base font-medium">Report Quality *</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {qualityOptions.map(quality => (
                       <Button
@@ -695,7 +689,7 @@ const Utilization = () => {
 
                 {/* Lab Partner - Shared between PDFs */}
                 <div>
-                  <Label>Executing Lab Partner * {splitPdfs && <span className="text-sm text-blue-600">(Shared)</span>}</Label>
+                  <Label>Executing Lab Partner *</Label>
                   <Select 
                     value={selectedLabPartner} 
                     onValueChange={(value) => setSelectedLabPartner(value)}
@@ -776,17 +770,19 @@ const Utilization = () => {
                       </div>
                     ) : (
                       <div className="space-y-4 h-full">
-                        {/* Search within Utilization Items */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                          <Input
-                            placeholder="Search utilization items..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onKeyPress={(e) => handleKeyPress(e, () => {})}
-                            className="pl-10"
-                          />
-                        </div>
+                        {/* Search within Utilization Items - Only show for non-Consult types */}
+                        {getCurrentPdfData().serviceType !== 'Consult' && (
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Input
+                              placeholder="Search utilization items..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              onKeyPress={(e) => handleKeyPress(e, () => {})}
+                              className="pl-10"
+                            />
+                          </div>
+                        )}
 
                         <ScrollArea className="h-[calc(100vh-500px)]">
                           {getCurrentPdfData().serviceType && (
