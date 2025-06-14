@@ -1104,7 +1104,7 @@ const Utilization = () => {
                             </Select>
                           </div>
 
-                          {/* QC Summary */}
+                          {/* QC Summary - Fixed calculation */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Summary</Label>
                             <div className="space-y-2">
