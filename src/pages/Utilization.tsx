@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -686,7 +687,7 @@ const Utilization = () => {
           </div>
 
           {/* Right Side - Form Fields and Utilization */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Top Right - Form Fields */}
             <Card>
               <CardHeader>
@@ -719,7 +720,7 @@ const Utilization = () => {
                   </div>
                 </div>
 
-                {/* Report Quality - Shared between PDFs */}
+                {/* Report Quality */}
                 <div>
                   <Label className="text-base font-medium">Report Quality *</Label>
                   <div className="grid grid-cols-3 gap-2 mt-2">
@@ -762,7 +763,7 @@ const Utilization = () => {
                   )}
                 </div>
 
-                {/* Lab Partner - Shared between PDFs */}
+                {/* Lab Partner */}
                 <div>
                   <Label>Executing Lab Partner *</Label>
                   <Select 
@@ -799,9 +800,9 @@ const Utilization = () => {
               <CardHeader>
                 <CardTitle>Utilization & QC Verification</CardTitle>
               </CardHeader>
-              <CardContent className="h-[calc(100vh-600px)]">
-                <Tabs defaultValue="utilization" className="h-full">
-                  <TabsList className="grid w-full grid-cols-2">
+              <CardContent className="h-full">
+                <Tabs defaultValue="utilization" className="h-full flex flex-col">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
                     <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
                       Utilization Tagging *
                       {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
@@ -812,7 +813,7 @@ const Utilization = () => {
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="utilization" className="flex-1 h-full">
+                  <TabsContent value="utilization" className="flex-1 h-0">
                     {!isMandatoryFieldsFilled() ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -821,9 +822,9 @@ const Utilization = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-4 h-full">
+                      <div className="space-y-4 h-full flex flex-col">
                         {/* Search within Utilization Items - Only show for non-Consult types */}
-                        {getCurrentPdfData().serviceType !== 'Consult' && (
+                        {selectedServiceType && selectedServiceType !== 'Consult' && (
                           <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
@@ -835,13 +836,13 @@ const Utilization = () => {
                           </div>
                         )}
 
-                        <ScrollArea className="h-full">
-                          {getCurrentPdfData().serviceType && (
+                        <ScrollArea className="flex-1">
+                          {selectedServiceType && (
                             <div>
                               <h3 className="font-medium mb-3">
-                                Utilization ({getCurrentPdfData().serviceType}) *
+                                Utilization ({selectedServiceType}) *
                               </h3>
-                              {!hasUtilizationSelected() && getCurrentPdfData().serviceType !== 'Consult' && (
+                              {!hasUtilizationSelected() && selectedServiceType !== 'Consult' && (
                                 <p className="text-sm text-red-600 mb-3">Please select at least one utilization item</p>
                               )}
                               {renderServiceItems()}
@@ -852,7 +853,7 @@ const Utilization = () => {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="qc" className="flex-1 h-full">
+                  <TabsContent value="qc" className="flex-1 h-0">
                     {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
