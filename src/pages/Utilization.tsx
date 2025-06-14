@@ -153,7 +153,6 @@ const Utilization = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
-  const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
   
   // Page-wise utilization for non-split PDFs
   const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
@@ -609,14 +608,28 @@ const Utilization = () => {
     return allSelected;
   };
 
-  // Helper function to check if an item is already selected in another PDF
+  // Helper function to check if an item is selected anywhere in the current PDF
+  const isItemSelectedInCurrentPdf = (itemKey: string) => {
+    if (splitPdfs && selectedPdfForTagging) {
+      const currentPdf = splitPdfs[selectedPdfForTagging];
+      return Object.values(currentPdf.pageUtilization).some(pageData => 
+        pageData.selectedItems[itemKey]
+      );
+    } else {
+      // For non-split PDFs, check across all pages
+      return Object.values(mainPageUtilization).some(pageData => 
+        pageData.selectedItems[itemKey]
+      );
+    }
+  };
+
+  // Helper function to check if an item is selected in the other PDF (for split PDFs only)
   const isItemSelectedInOtherPdf = (itemKey: string) => {
     if (!splitPdfs || !selectedPdfForTagging) return false;
     
     const otherPdf = selectedPdfForTagging === 'pdf1' ? 'pdf2' : 'pdf1';
     const otherPdfData = splitPdfs[otherPdf];
     
-    // Check if item is selected in any page of the other PDF
     return Object.values(otherPdfData.pageUtilization).some(pageData => 
       pageData.selectedItems[itemKey]
     );
@@ -626,18 +639,22 @@ const Utilization = () => {
     const key = `${category}-${item}`;
     const currentPageData = getCurrentPageData();
     const currentSelectedItems = currentPageData?.selectedItems || {};
-    const newSelected = !currentSelectedItems[key];
     
-    // Check if item is already selected globally (on any page)
-    if (newSelected && globalSelectedItems.has(key)) {
+    // If item is already selected in current PDF, allow toggling it off
+    const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(key);
+    const isCurrentlySelected = currentSelectedItems[key];
+    
+    // Only prevent selection if it's selected in the OTHER PDF (for split PDFs)
+    if (!isCurrentlySelected && splitPdfs && isItemSelectedInOtherPdf(key)) {
       toast({
         title: "Item Already Selected",
-        description: `"${item}" is already selected on another page. Each utilization item can only be selected once.`,
+        description: `"${item}" is already selected in the other PDF. Each utilization item can only be selected once across both PDFs.`,
         variant: "destructive"
       });
       return;
     }
     
+    const newSelected = !isSelectedInCurrentPdf;
     const newSelectedItems = {
       ...currentSelectedItems,
       [key]: newSelected
@@ -667,18 +684,21 @@ const Utilization = () => {
     const currentServiceType = getCurrentServiceType();
     const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
-    const allSelected = categoryItems.every(item => currentSelectedItems[`${category}-${item}`]);
+    const allSelected = categoryItems.every(item => {
+      const itemKey = `${category}-${item}`;
+      return currentSelectedItems[itemKey] || isItemSelectedInCurrentPdf(itemKey);
+    });
     
-    // Check if any items in this category are already selected globally
-    if (!allSelected) {
+    // Check if any items in this category are selected in the OTHER PDF (for split PDFs)
+    if (!allSelected && splitPdfs) {
       const conflictingItems = categoryItems.filter(item => 
-        globalSelectedItems.has(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]
+        isItemSelectedInOtherPdf(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]
       );
       
       if (conflictingItems.length > 0) {
         toast({
-          title: "Items Already Selected",
-          description: `Some items in "${category}" are already selected on other pages: ${conflictingItems.join(', ')}`,
+          title: "Items Already Selected in Other PDF",
+          description: `Some items in "${category}" are already selected in the other PDF: ${conflictingItems.join(', ')}`,
           variant: "destructive"
         });
         return;
@@ -690,10 +710,11 @@ const Utilization = () => {
     // Toggle category header
     newSelectedItems[category] = !allSelected;
     
-    // Toggle all items in category (only if not already selected globally)
+    // Toggle all items in category
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
-      if (!globalSelectedItems.has(key) || currentSelectedItems[key]) {
+      // Only toggle if not selected in other PDF, but allow if already selected in current PDF
+      if (!isItemSelectedInOtherPdf(key)) {
         newSelectedItems[key] = !allSelected;
       }
     });
@@ -802,7 +823,11 @@ const Utilization = () => {
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
       const selectedItems = currentPageData?.selectedItems || {};
-      const selectedCount = categoryItemIds.filter(id => selectedItems[id]).length;
+      
+      // Count items selected on current page OR selected anywhere in current PDF
+      const selectedCount = categoryItemIds.filter(id => 
+        selectedItems[id] || isItemSelectedInCurrentPdf(id)
+      ).length;
       const hasAnySelected = selectedCount > 0;
 
       return (
@@ -819,25 +844,34 @@ const Utilization = () => {
           <div className="ml-6 space-y-1">
             {items.map(item => {
               const itemKey = `${category}-${item}`;
-              const isSelected = selectedItems[itemKey] || false;
-              const isAlreadySelectedGlobally = globalSelectedItems.has(itemKey) && !isSelected;
+              const isSelectedOnCurrentPage = selectedItems[itemKey] || false;
+              const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(itemKey);
+              const isSelectedInOtherPdf = isItemSelectedInOtherPdf(itemKey);
+              
+              // Show as checked if selected anywhere in current PDF
+              const isChecked = isSelectedOnCurrentPage || isSelectedInCurrentPdf;
+              // Disable if selected in other PDF but not in current PDF
+              const isDisabled = isSelectedInOtherPdf && !isSelectedInCurrentPdf;
               
               return (
                 <div key={item} className="flex items-center space-x-2">
                   <Checkbox
-                    checked={isSelected}
-                    disabled={isAlreadySelectedGlobally}
+                    checked={isChecked}
+                    disabled={isDisabled}
                     onCheckedChange={() => handleServiceItemToggle(category, item)}
                   />
                   <Label 
                     className={`text-sm cursor-pointer ${
-                      isAlreadySelectedGlobally ? 'text-gray-400 line-through' : ''
+                      isDisabled ? 'text-gray-400 line-through' : ''
                     }`} 
-                    onClick={() => !isAlreadySelectedGlobally && handleServiceItemToggle(category, item)}
+                    onClick={() => !isDisabled && handleServiceItemToggle(category, item)}
                   >
                     {item}
-                    {isAlreadySelectedGlobally && (
-                      <span className="ml-2 text-xs text-red-500">(Already selected on another page)</span>
+                    {isDisabled && (
+                      <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
+                    )}
+                    {isSelectedInCurrentPdf && !isSelectedOnCurrentPage && (
+                      <span className="ml-2 text-xs text-blue-500">(Selected on other page)</span>
                     )}
                   </Label>
                 </div>
