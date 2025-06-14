@@ -871,9 +871,6 @@ const Utilization = () => {
                     {isDisabled && (
                       <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
                     )}
-                    {isSelectedInCurrentPdf && !isSelectedOnCurrentPage && (
-                      <span className="ml-2 text-xs text-blue-500">(Selected on other page)</span>
-                    )}
                   </Label>
                 </div>
               );
