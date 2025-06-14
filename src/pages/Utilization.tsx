@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -105,9 +104,9 @@ const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "
 const serviceTypeOptions = ["Pathology", "Other Services"];
 const labPartners = ["Lab Partner 1", "Lab Partner 2", "Lab Partner 3", "Lab Partner 4"];
 
-// QC elimination items
-const qcDemographicItems = ["Name Mismatch", "Age Incorrect", "Gender Wrong", "Address Error", "Phone Number Error"];
-const qcFlagItems = ["Report Date Error", "Doctor Name Missing", "Lab Values Out of Range", "Units Incorrect"];
+// QC Demographics and Flags
+const qcDemographicItems = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
+const qcFlagItems = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics"];
 
 interface FileData {
   name: string;
@@ -129,13 +128,10 @@ const Utilization = () => {
   const [expectedCount, setExpectedCount] = useState(0);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
   const [customLabPartner, setCustomLabPartner] = useState('');
-  const [demographics, setDemographics] = useState('');
   const [comments, setComments] = useState('');
   const [eliminatedDemographics, setEliminatedDemographics] = useState<string[]>([]);
   const [eliminatedFlags, setEliminatedFlags] = useState<string[]>([]);
   const [qcStatus, setQcStatus] = useState('');
-  const [pendingRadiology, setPendingRadiology] = useState(false);
-  const [pendingCardiology, setPendingCardiology] = useState(false);
   const { toast } = useToast();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,7 +321,7 @@ const Utilization = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
@@ -360,7 +356,7 @@ const Utilization = () => {
                   </label>
                 </div>
 
-                {/* PDF Preview */}
+                {/* PDF Preview and Controls */}
                 {uploadedFiles.length > 0 && (
                   <div className="border rounded-lg p-4 flex-1">
                     <div className="flex items-center justify-between mb-4">
@@ -455,9 +451,9 @@ const Utilization = () => {
                   />
                 </div>
 
-                {/* Report Quality Tagging */}
+                {/* Report Quality */}
                 <div>
-                  <Label className="text-base font-medium">Report Quality * (Required)</Label>
+                  <Label className="text-base font-medium">Report Quality *</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {qualityOptions.map(quality => (
                       <Button
@@ -475,7 +471,7 @@ const Utilization = () => {
 
                 {/* Service Type */}
                 <div>
-                  <Label className="text-base font-medium">Service Type * (Required)</Label>
+                  <Label className="text-base font-medium">Service Type *</Label>
                   <div className="flex gap-2 mt-2">
                     {serviceTypeOptions.map(type => (
                       <Button
@@ -580,9 +576,10 @@ const Utilization = () => {
                   <TabsContent value="qc" className="flex-1">
                     <ScrollArea className="h-[calc(100vh-500px)]">
                       <div className="space-y-6">
-                        {/* Demographics Verification */}
+                        {/* QC Step: Verify Demographics */}
                         <div>
-                          <Label className="text-base font-medium mb-2 block">QC - Verify Demographics (Click to Eliminate)</Label>
+                          <Label className="text-base font-medium mb-2 block">QC Step: Verify Demographics</Label>
+                          <Label className="text-sm text-gray-600 mb-3 block">Pending</Label>
                           <div className="space-y-2">
                             {qcDemographicItems.map(item => (
                               <Button
@@ -601,7 +598,7 @@ const Utilization = () => {
 
                         {/* QC Flags */}
                         <div>
-                          <Label className="text-base font-medium mb-2 block">QC Flags (Click to Eliminate)</Label>
+                          <Label className="text-base font-medium mb-2 block">QC Flags</Label>
                           <div className="space-y-2">
                             {qcFlagItems.map(item => (
                               <Button
@@ -618,33 +615,13 @@ const Utilization = () => {
                           </div>
                         </div>
 
-                        {/* Pending Items */}
+                        {/* QC Tracker Status */}
                         <div>
-                          <Label className="text-base font-medium mb-2 block">Pending Items</Label>
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={pendingRadiology}
-                                onCheckedChange={(checked) => setPendingRadiology(checked === true)}
-                              />
-                              <Label>Pending Radiology</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={pendingCardiology}
-                                onCheckedChange={(checked) => setPendingCardiology(checked === true)}
-                              />
-                              <Label>Pending Cardiology</Label>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Overall QC Status */}
-                        <div>
+                          <Label className="text-base font-medium mb-2 block">QC Tracker Status</Label>
                           <Label htmlFor="qc-status">Overall QC Status</Label>
                           <Select value={qcStatus} onValueChange={setQcStatus}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select QC status" />
+                              <SelectValue placeholder="Select Status" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="passed">Passed</SelectItem>
@@ -652,6 +629,19 @@ const Utilization = () => {
                               <SelectItem value="pending">Pending Review</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+
+                        {/* QC Summary */}
+                        <div>
+                          <Label className="text-base font-medium mb-2 block">QC Summary</Label>
+                          <div className="space-y-2">
+                            <div className="text-sm">
+                              <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - eliminatedDemographics.length}/{qcDemographicItems.length}
+                            </div>
+                            <div className="text-sm">
+                              <span className="font-medium">Flags Raised:</span> {eliminatedFlags.length}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Comments */}
