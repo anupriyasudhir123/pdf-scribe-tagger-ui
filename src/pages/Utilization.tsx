@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -423,11 +422,69 @@ const Utilization = () => {
     );
   };
 
+  // Helper function to get all selected items across both PDFs
+  const getAllSelectedItems = () => {
+    const allSelected = new Set<string>();
+    
+    if (splitPdfs) {
+      // Get all selected items from both PDFs
+      Object.values(splitPdfs.pdf1.pageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
+            allSelected.add(key);
+          }
+        });
+      });
+      
+      Object.values(splitPdfs.pdf2.pageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
+            allSelected.add(key);
+          }
+        });
+      });
+    } else {
+      // Get all selected items from main PDF
+      Object.values(mainPageUtilization).forEach(pageData => {
+        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
+          if (selected && !key.includes('Comment') && !key.includes('Expected')) {
+            allSelected.add(key);
+          }
+        });
+      });
+    }
+    
+    return allSelected;
+  };
+
+  // Helper function to check if an item is already selected in another PDF
+  const isItemSelectedInOtherPdf = (itemKey: string) => {
+    if (!splitPdfs || !selectedPdfForTagging) return false;
+    
+    const otherPdf = selectedPdfForTagging === 'pdf1' ? 'pdf2' : 'pdf1';
+    const otherPdfData = splitPdfs[otherPdf];
+    
+    // Check if item is selected in any page of the other PDF
+    return Object.values(otherPdfData.pageUtilization).some(pageData => 
+      pageData.selectedItems[itemKey]
+    );
+  };
+
   const handleServiceItemToggle = (category: string, item: string) => {
     const key = `${category}-${item}`;
     const currentPageData = getCurrentPageData();
     const currentSelectedItems = currentPageData?.selectedItems || {};
     const newSelected = !currentSelectedItems[key];
+    
+    // For split PDFs, check if item is already selected in other PDF
+    if (splitPdfs && newSelected && isItemSelectedInOtherPdf(key)) {
+      toast({
+        title: "Item Already Selected",
+        description: `"${item}" is already selected in the other PDF. Each utilization item can only be selected once across all PDFs.`,
+        variant: "destructive"
+      });
+      return;
+    }
     
     const newSelectedItems = {
       ...currentSelectedItems,
@@ -468,6 +525,22 @@ const Utilization = () => {
     const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     const allSelected = categoryItems.every(item => currentSelectedItems[`${category}-${item}`]);
+    
+    // For split PDFs, check if any items in this category are already selected in other PDF
+    if (splitPdfs && !allSelected) {
+      const conflictingItems = categoryItems.filter(item => 
+        isItemSelectedInOtherPdf(`${category}-${item}`)
+      );
+      
+      if (conflictingItems.length > 0) {
+        toast({
+          title: "Items Already Selected",
+          description: `Some items in "${category}" are already selected in the other PDF: ${conflictingItems.join(', ')}`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
     
     const newSelectedItems = { ...currentSelectedItems };
     let expectedCountChange = 0;
@@ -602,17 +675,32 @@ const Utilization = () => {
             </Label>
           </div>
           <div className="ml-6 space-y-1">
-            {items.map(item => (
-              <div key={item} className="flex items-center space-x-2">
-                <Checkbox
-                  checked={selectedItems[`${category}-${item}`] || false}
-                  onCheckedChange={() => handleServiceItemToggle(category, item)}
-                />
-                <Label className="text-sm cursor-pointer" onClick={() => handleServiceItemToggle(category, item)}>
-                  {item}
-                </Label>
-              </div>
-            ))}
+            {items.map(item => {
+              const itemKey = `${category}-${item}`;
+              const isSelected = selectedItems[itemKey] || false;
+              const isDisabledDueToOtherPdf = splitPdfs && !isSelected && isItemSelectedInOtherPdf(itemKey);
+              
+              return (
+                <div key={item} className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={isSelected}
+                    disabled={isDisabledDueToOtherPdf}
+                    onCheckedChange={() => handleServiceItemToggle(category, item)}
+                  />
+                  <Label 
+                    className={`text-sm cursor-pointer ${
+                      isDisabledDueToOtherPdf ? 'text-gray-400 line-through' : ''
+                    }`} 
+                    onClick={() => !isDisabledDueToOtherPdf && handleServiceItemToggle(category, item)}
+                  >
+                    {item}
+                    {isDisabledDueToOtherPdf && (
+                      <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
+                    )}
+                  </Label>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
