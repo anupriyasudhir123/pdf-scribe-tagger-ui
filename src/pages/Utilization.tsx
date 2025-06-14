@@ -8,8 +8,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
+import { Upload, Search, Download, Split, FileText, Trash2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import PDFViewer from '@/components/PDFViewer';
 
 // Service data structure for Pathology
 const pathologyServices = {
@@ -219,13 +220,12 @@ const Utilization = () => {
     const newFiles: FileData[] = files.map(file => ({
       name: file.name,
       file: file,
-      pages: Math.floor(Math.random() * 10) + 1 // Mock page count
+      pages: 0 // Will be set by PDF viewer
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
     if (files.length > 0 && !referenceId) {
       setReferenceId(files[0].name.replace(/\.[^/.]+$/, ""));
     }
-    setTotalPages(newFiles[0]?.pages || 1);
     toast({
       title: "Files Uploaded",
       description: `${files.length} file(s) uploaded successfully`,
@@ -491,7 +491,7 @@ const Utilization = () => {
 
                 {/* PDF Preview and Controls */}
                 {uploadedFiles.length > 0 && (
-                  <div className="border rounded-lg p-4 flex-1">
+                  <>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-medium">PDF Preview</h3>
                       <div className="flex items-center gap-2">
@@ -506,70 +506,19 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Page Thumbnails Grid for Selection */}
-                    <div className="mb-4">
-                      <Label className="text-sm font-medium mb-2 block">Select Pages to Split:</Label>
-                      <ScrollArea className="h-48">
-                        <div className="grid grid-cols-4 gap-2 p-2">
-                          {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
-                            <div
-                              key={pageNum}
-                              className={`relative cursor-pointer border-2 rounded-lg p-2 transition-all ${
-                                selectedPages.includes(pageNum) 
-                                  ? "border-blue-500 bg-blue-50" 
-                                  : "border-gray-200 hover:border-gray-300"
-                              }`}
-                              onClick={() => handlePageSelection(pageNum)}
-                            >
-                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center">
-                                <FileText className="h-8 w-8 text-gray-400 mb-1" />
-                                <div className="text-xs text-gray-500">Page {pageNum}</div>
-                                <div className="w-full h-2 bg-gray-100 mt-2 rounded"></div>
-                                <div className="w-3/4 h-1 bg-gray-200 mt-1 rounded"></div>
-                              </div>
-                              {selectedPages.includes(pageNum) && (
-                                <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                                  ✓
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </div>
-
-                    {/* Current Page Preview */}
-                    <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4 border">
-                      <div className="text-center bg-white p-8 rounded shadow-sm border">
-                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <span className="text-gray-500 text-lg font-medium">PDF Preview - Page {currentPage}</span>
-                        <div className="mt-4 space-y-2">
-                          <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
-                          <div className="w-24 h-2 bg-gray-200 rounded mx-auto"></div>
-                          <div className="w-28 h-2 bg-gray-200 rounded mx-auto"></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">Page {currentPage} of {totalPages}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <PDFViewer
+                      file={uploadedFiles[0]?.file || null}
+                      selectedPages={selectedPages}
+                      onPageSelect={handlePageSelection}
+                      currentPage={currentPage}
+                      onPageChange={(page) => {
+                        setCurrentPage(page);
+                        const file = uploadedFiles[0];
+                        if (file && page <= file.pages) {
+                          setTotalPages(file.pages);
+                        }
+                      }}
+                    />
 
                     {/* Split PDFs Preview and Selection */}
                     {splitPdfs && (
@@ -611,7 +560,7 @@ const Utilization = () => {
                         </div>
                       </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {/* Reference ID */}
