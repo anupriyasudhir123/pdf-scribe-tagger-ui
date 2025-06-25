@@ -12,25 +12,83 @@ import { useToast } from '@/hooks/use-toast';
 
 // Service data structure for Pathology
 const pathologyServices = {
-  "Complete Blood Count (CBC)": ["Absolute Leucocyte Count", "BASOPHILS - ABSOLUTE COUNT", "Differential Leucocyte Count (DLC)", "Differential Leucocyte Count (DLC) - Basophils", "Differential Leucocyte Count (DLC) - Eosinophils", "Differential Leucocyte Count (DLC) - Lymphocytes", "Differential Leucocyte Count (DLC) - Monocytes", "Differential Leucocyte Count (DLC) - Neutrophils", "Differential Leucocyte Count (DLC) - Polymorphs", "EOSINOPHILS - ABSOLUTE COUNT", "HEMATOCRIT(PCV)", "HEMOGLOBIN", "IMMATURE GRANULOCYTE PERCENTAGE(IG%)", "IMMATURE GRANULOCYTES", "LYMPHOCYTES - ABSOLUTE COUNT", "MEAN CORP.HEMO.CONC(MCHC)", "MEAN CORPUSCULAR HEMOGLOBIN(MCH)", "MEAN CORPUSCULAR VOLUME(MCV)", "Mentzer Index", "Neutrophil Lymphocyte Ratio (NLR)", "NEUTROPHILS - ABSOLUTE COUNT", "Nucleated RBC %", "Nucleated RBC's", "Platelet Count", "Platelet Distribution Width (PDW)", "Plateletcrit (PCT)", "RBC Count", "RED CELL DISTRIBUTION WIDTH (RDW-CV)", "RED CELL DISTRIBUTION WIDTH (RDW-SD)", "TOTAL LEUCOCYTES COUNT (WBC)"],
-  "Erythrocyte Sedimentation Rate (ESR)": ["ERYTHROCYTE SEDIMENTATION RATE (ESR)"],
-  "Blood Group and Rh Type": ["Blood Group", "Blood Group & Rh Type", "Rh Type"],
-  "Liver Function Test (LFT)": ["ALANINE TRANSAMINASE (SGPT)", "ALBUMIN - SERUM", "Albumin / Globulin Ratio", "ALKALINE PHOSPHATASE", "ASPARTATE AMINOTRANSFERASE (SGOT)", "AST (SGOT) / ALT (SGPT) RATIO", "BILE SALT", "BILIRUBIN - TOTAL", "BILIRUBIN - DIRECT", "Bilirubin - Indirect", "Gamma Glutamyltransferase (GGT)", "GLOBULIN", "PROTEIN - TOTAL"],
-  "Kidney Function Test (KFT)": ["Blood Urea", "BLOOD UREA NITROGEN (BUN)", "BUN / CREATININE RATIO", "CALCIUM", "Chloride", "CREATININE - SERUM", "Estimated Glomerular Filtration Rate", "MICROALBUMIN", "PHOSPHORUS", "POTASSIUM", "Sodium", "UREA / CREATININE RATIO", "URIC ACID"],
-  "Lipid Profile": ["ATHEROGENIC INDEX (AIP)", "Chol/HDL Ratio", "HDL CHOLESTEROL - DIRECT", "HDl: LDL Cholesterol", "LDL CHOLESTEROL - DIRECT", "LDl: HDL Cholesterol", "Non HDL Cholesterol", "TOTAL CHOLESTEROL", "Total Lipids", "TRIGLYCERIDES", "Triglycerides / HDL Ratio", "VLDL CHOLESTEROL"],
-  "Urine Routine": ["AMORPHOUS DEPOSITS - URINE", "Blood Urine", "Urine Appearance", "Urine Bacteria", "URINE BILE PIGMENT/BILE SALTS", "URINE CASTS", "Urine Colour", "URINE CRYSTALS", "Urine Deposits", "URINE EPITHELIAL CELLS", "URINE HYALINE CASTS", "URINE KETONE", "Urine Leucocyte Esterase", "URINE LEUCOCYTES", "URINE MUCUS", "URINE NITRITE", "Urine Occult Blood", "URINE PATHOLOGICAL CASTS", "URINE PUS CELLS (WBC)", "Urine RBC (erythrocytes)", "Urine Reaction and pH", "URINE SPECIFIC GRAVITY", "URINE VOLUME", "URINE YEAST", "UROBILINOGEN", "URINARY BILIRUBIN", "URINARY GLUCOSE", "URINARY PROTEIN"],
-  "Stool Routine": ["Stool Colour", "Stool Occult Blood", "STOOL PUS CELLS", "PARASITE"],
-  "Thyroid Function Test (TFT)": ["FREE THYROXINE (FT4)", "FREE TRIIODOTHYRONINE (FT3)", "T3, Total", "T4, Total", "THYROID STIMULATING HORMONE - ULTRA SENSITIVE", "THYROID STIMULATING HORMONE (TSH)"],
-  "PAP Smear": ["Clinical Details - PAP Smear", "Clinical History - PAP Smear", "Endocervical cells - PAP Smear", "Epithelial Abnormalities - PAP Smear", "GENERAL CATEGORIZATION - PAP Smear", "Gross Examination - PAP Smear", "Interpretation / Result - PAP Smear", "Microorganisms - PAP Smear", "MICROSCOPIC OBSERVATIONS - PAP Smear", "Non-neoplastic Changes - PAP Smear", "Papanicolaou test (PAP Smear)", "Specimen - PAP Smear", "Specimen Adequacy - PAP Smear", "Squamous Abnormalities - PAP Smear"],
+  "Complete Blood Count (CBC)": [
+    "Absolute Leucocyte Count", "BASOPHILS - ABSOLUTE COUNT", "Differential Leucocyte Count (DLC)",
+    "Differential Leucocyte Count (DLC) - Basophils", "Differential Leucocyte Count (DLC) - Eosinophils",
+    "Differential Leucocyte Count (DLC) - Lymphocytes", "Differential Leucocyte Count (DLC) - Monocytes",
+    "Differential Leucocyte Count (DLC) - Neutrophils", "Differential Leucocyte Count (DLC) - Polymorphs",
+    "EOSINOPHILS - ABSOLUTE COUNT", "HEMATOCRIT(PCV)", "HEMOGLOBIN", "IMMATURE GRANULOCYTE PERCENTAGE(IG%)",
+    "IMMATURE GRANULOCYTES", "LYMPHOCYTES - ABSOLUTE COUNT", "MEAN CORP.HEMO.CONC(MCHC)",
+    "MEAN CORPUSCULAR HEMOGLOBIN(MCH)", "MEAN CORPUSCULAR VOLUME(MCV)", "Mentzer Index",
+    "Neutrophil Lymphocyte Ratio (NLR)", "NEUTROPHILS - ABSOLUTE COUNT", "Nucleated RBC %",
+    "Nucleated RBC's", "Platelet Count", "Platelet Distribution Width (PDW)", "Plateletcrit (PCT)",
+    "RBC Count", "RED CELL DISTRIBUTION WIDTH (RDW-CV)", "RED CELL DISTRIBUTION WIDTH (RDW-SD)",
+    "TOTAL LEUCOCYTES COUNT (WBC)"
+  ],
+  "Erythrocyte Sedimentation Rate (ESR)": [
+    "ERYTHROCYTE SEDIMENTATION RATE (ESR)"
+  ],
+  "Blood Group and Rh Type": [
+    "Blood Group", "Blood Group & Rh Type", "Rh Type"
+  ],
+  "Liver Function Test (LFT)": [
+    "ALANINE TRANSAMINASE (SGPT)", "ALBUMIN - SERUM", "Albumin / Globulin Ratio", "ALKALINE PHOSPHATASE",
+    "ASPARTATE AMINOTRANSFERASE (SGOT)", "AST (SGOT) / ALT (SGPT) RATIO", "BILE SALT",
+    "BILIRUBIN - TOTAL", "BILIRUBIN - DIRECT", "Bilirubin - Indirect", "Gamma Glutamyltransferase (GGT)",
+    "GLOBULIN", "PROTEIN - TOTAL"
+  ],
+  "Kidney Function Test (KFT)": [
+    "Blood Urea", "BLOOD UREA NITROGEN (BUN)", "BUN / CREATININE RATIO", "CALCIUM", "Chloride",
+    "CREATININE - SERUM", "Estimated Glomerular Filtration Rate", "MICROALBUMIN", "PHOSPHORUS",
+    "POTASSIUM", "Sodium", "UREA / CREATININE RATIO", "URIC ACID"
+  ],
+  "Lipid Profile": [
+    "ATHEROGENIC INDEX (AIP)", "Chol/HDL Ratio", "HDL CHOLESTEROL - DIRECT", "HDl: LDL Cholesterol",
+    "LDL CHOLESTEROL - DIRECT", "LDl: HDL Cholesterol", "Non HDL Cholesterol", "TOTAL CHOLESTEROL",
+    "Total Lipids", "TRIGLYCERIDES", "Triglycerides / HDL Ratio", "VLDL CHOLESTEROL"
+  ],
+  "Urine Routine": [
+    "AMORPHOUS DEPOSITS - URINE", "Blood Urine", "Urine Appearance", "Urine Bacteria",
+    "URINE BILE PIGMENT/BILE SALTS", "URINE CASTS", "Urine Colour", "URINE CRYSTALS", "Urine Deposits",
+    "URINE EPITHELIAL CELLS", "URINE HYALINE CASTS", "URINE KETONE", "Urine Leucocyte Esterase",
+    "URINE LEUCOCYTES", "URINE MUCUS", "URINE NITRITE", "Urine Occult Blood", "URINE PATHOLOGICAL CASTS",
+    "URINE PUS CELLS (WBC)", "Urine RBC (erythrocytes)", "Urine Reaction and pH", "URINE SPECIFIC GRAVITY",
+    "URINE VOLUME", "URINE YEAST", "UROBILINOGEN", "URINARY BILIRUBIN", "URINARY GLUCOSE", "URINARY PROTEIN"
+  ],
+  "Stool Routine": [
+    "Stool Colour", "Stool Occult Blood", "STOOL PUS CELLS", "PARASITE"
+  ],
+  "Thyroid Function Test (TFT)": [
+    "FREE THYROXINE (FT4)", "FREE TRIIODOTHYRONINE (FT3)", "T3, Total", "T4, Total",
+    "THYROID STIMULATING HORMONE - ULTRA SENSITIVE", "THYROID STIMULATING HORMONE (TSH)"
+  ],
+  "PAP Smear": [
+    "Clinical Details - PAP Smear", "Clinical History - PAP Smear", "Endocervical cells - PAP Smear",
+    "Epithelial Abnormalities - PAP Smear", "GENERAL CATEGORIZATION - PAP Smear", "Gross Examination - PAP Smear",
+    "Interpretation / Result - PAP Smear", "Microorganisms - PAP Smear", "MICROSCOPIC OBSERVATIONS - PAP Smear",
+    "Non-neoplastic Changes - PAP Smear", "Papanicolaou test (PAP Smear)", "Specimen - PAP Smear",
+    "Specimen Adequacy - PAP Smear", "Squamous Abnormalities - PAP Smear"
+  ],
   "Vitamin B12": ["Vitamin B12"],
   "Vitamin D": ["VITAMIN D TOTAL", "VITAMIN D3"],
-  "Iron Profile": ["Serum Iron", "Total Iron Binding Capacity (TIBC)", "Unsaturated Iron-Binding Capacity (UIBC)"],
-  "C-Reactive Protein (CRP)": ["C-REACTIVE PROTEIN (CRP)", "High-sensitivity CRP (hs-CRP)"],
-  "Electrolytes": ["CALCIUM", "Chloride", "PHOSPHORUS", "POTASSIUM", "Sodium"],
-  "Diabetes Profile": ["Estimated Average Glucose (EAG)", "FASTING BLOOD SUGAR (GLUCOSE)", "GLYCATED HEMOGLOBIN", "Mean Plasma Glucose Level", "MICROALBUMIN", "Postprandial Blood Glucose/Glucose-PP", "Random Blood Sugar/Glucose (RBS)", "URINARY GLUCOSE"],
+  "Iron Profile": [
+    "Serum Iron", "Total Iron Binding Capacity (TIBC)", "Unsaturated Iron-Binding Capacity (UIBC)"
+  ],
+  "C-Reactive Protein (CRP)": [
+    "C-REACTIVE PROTEIN (CRP)", "High-sensitivity CRP (hs-CRP)"
+  ],
+  "Electrolytes": [
+    "CALCIUM", "Chloride", "PHOSPHORUS", "POTASSIUM", "Sodium"
+  ],
+  "Diabetes Profile": [
+    "Estimated Average Glucose (EAG)", "FASTING BLOOD SUGAR (GLUCOSE)", "GLYCATED HEMOGLOBIN",
+    "Mean Plasma Glucose Level", "MICROALBUMIN", "Postprandial Blood Glucose/Glucose-PP",
+    "Random Blood Sugar/Glucose (RBS)", "URINARY GLUCOSE"
+  ],
   "Rheumatoid Factor (RF)": ["RHEUMATOID FACTOR (RF)"],
   "Prostate Specific Antigen (PSA)": ["PROSTATE SPECIFIC ANTIGEN (PSA)"]
 };
+
 const otherServices = {
   "Radiology & Imaging": ["X-Ray", "Ultrasound (USG)", "CT Scan", "MRI", "ECHO"],
   "Cardiology": ["ECG", "TMT", "Holter"],
@@ -40,6 +98,7 @@ const otherServices = {
   "Molecular Diagnostics": ["PCR-based tests (COVID-19, TB, HPV)", "Genetic testing"],
   "Vaccination": ["Routine Vaccines", "Travel Vaccines", "Corporate Vaccines"]
 };
+
 const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "Digital Print", "Scanned"];
 const serviceTypeOptions = ["Pathology", "Other Services", "Consult"];
 const labPartners = ["Apollo", "MEDI 5 Diagnostics", "Aarthi Scans", "Tata 1 MG Lab", "Prognosis Laboratory"];
@@ -47,21 +106,25 @@ const labPartners = ["Apollo", "MEDI 5 Diagnostics", "Aarthi Scans", "Tata 1 MG 
 // QC Demographics and Flags
 const qcDemographicItems = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
 const qcFlagItems = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics"];
+
 interface FileData {
   name: string;
   file: File;
   pages: number;
 }
+
 interface PageUtilization {
   serviceType: string;
   selectedItems: Record<string, boolean>;
   expectedCount: number;
 }
+
 interface QCVerification {
   eliminatedDemographics: string[];
   eliminatedFlags: string[];
   qcStatus: string;
 }
+
 interface SplitPdfData {
   pdf1: {
     pages: number[];
@@ -82,6 +145,7 @@ interface SplitPdfData {
     qcVerification: QCVerification;
   };
 }
+
 const Utilization = () => {
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
@@ -90,36 +154,36 @@ const Utilization = () => {
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
   const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
   const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
-
+  
   // Page-wise utilization for non-split PDFs
   const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
-
+  
   // QC Verification for main PDF (non-split)
   const [mainQCVerification, setMainQCVerification] = useState<QCVerification>({
     eliminatedDemographics: [],
     eliminatedFlags: [],
     qcStatus: ''
   });
-
+  
   // Track all selected utilization items globally to prevent duplicates
   const [globalSelectedItems, setGlobalSelectedItems] = useState<Set<string>>(new Set());
-
+  
   // Shared fields between both PDFs
   const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
   const [customLabPartner, setCustomLabPartner] = useState('');
-
+  
   // Main PDF data (for PDF-level info when not split)
   const [referenceId, setReferenceId] = useState('');
   const [mainServiceType, setMainServiceType] = useState('');
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
 
   // Helper function to update global selected items
   const updateGlobalSelectedItems = useCallback(() => {
     const allSelected = new Set<string>();
+    
     if (splitPdfs) {
       // Get all selected items from both PDFs
       [splitPdfs.pdf1, splitPdfs.pdf2].forEach(pdf => {
@@ -149,6 +213,7 @@ const Utilization = () => {
         });
       });
     }
+    
     setGlobalSelectedItems(allSelected);
   }, [splitPdfs, mainPageUtilization]);
 
@@ -189,7 +254,7 @@ const Utilization = () => {
     if (splitPdfs && selectedPdfForTagging) {
       const currentPdf = splitPdfs[selectedPdfForTagging];
       let totalCount = 0;
-
+      
       // Sum up all selected items across all pages of this PDF
       Object.values(currentPdf.pageUtilization).forEach(pageData => {
         Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
@@ -202,6 +267,7 @@ const Utilization = () => {
           }
         });
       });
+      
       return totalCount;
     } else {
       // For non-split PDFs, sum across all pages
@@ -217,6 +283,7 @@ const Utilization = () => {
           }
         });
       });
+      
       return totalCount;
     }
   };
@@ -230,7 +297,7 @@ const Utilization = () => {
   const hasUtilizationSelected = () => {
     const currentServiceType = getCurrentServiceType();
     if (currentServiceType === 'Consult') return true; // Consult doesn't need utilization items
-
+    
     const currentPageData = getCurrentPageData();
     return currentPageData ? Object.values(currentPageData.selectedItems).some(Boolean) : false;
   };
@@ -240,6 +307,7 @@ const Utilization = () => {
     const currentQC = getCurrentQCVerification();
     return currentQC.eliminatedDemographics.length > 0;
   };
+
   const getCurrentServiceType = () => {
     if (splitPdfs && selectedPdfForTagging) {
       const currentPageData = getCurrentPageData();
@@ -248,12 +316,14 @@ const Utilization = () => {
     const currentPageData = getCurrentPageData();
     return currentPageData?.serviceType || mainServiceType;
   };
+
   const getCurrentPageData = (): PageUtilization | null => {
     if (splitPdfs && selectedPdfForTagging) {
       return splitPdfs[selectedPdfForTagging].pageUtilization[currentPage] || null;
     }
     return mainPageUtilization[currentPage] || null;
   };
+
   const updateCurrentPageData = (updates: Partial<PageUtilization>) => {
     if (splitPdfs && selectedPdfForTagging) {
       setSplitPdfs(prev => {
@@ -264,6 +334,7 @@ const Utilization = () => {
           selectedItems: {},
           expectedCount: 0
         };
+        
         const updated = {
           ...prev,
           [selectedPdfForTagging]: {
@@ -277,9 +348,10 @@ const Utilization = () => {
             }
           }
         };
-
+        
         // Update global selected items after state change
         setTimeout(() => updateGlobalSelectedItems(), 0);
+        
         return updated;
       });
     } else {
@@ -289,6 +361,7 @@ const Utilization = () => {
           selectedItems: {},
           expectedCount: 0
         };
+        
         const updated = {
           ...prev,
           [currentPage]: {
@@ -296,13 +369,15 @@ const Utilization = () => {
             ...updates
           }
         };
-
+        
         // Update global selected items after state change
         setTimeout(() => updateGlobalSelectedItems(), 0);
+        
         return updated;
       });
     }
   };
+
   const updateServiceType = (serviceType: string) => {
     if (splitPdfs && selectedPdfForTagging) {
       setSplitPdfs(prev => {
@@ -318,12 +393,11 @@ const Utilization = () => {
     } else {
       setMainServiceType(serviceType);
     }
-
+    
     // Also update current page data
-    updateCurrentPageData({
-      serviceType
-    });
+    updateCurrentPageData({ serviceType });
   };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const newFiles: FileData[] = files.map(file => ({
@@ -332,7 +406,7 @@ const Utilization = () => {
       pages: Math.floor(Math.random() * 10) + 1 // Mock page count
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
-
+    
     // Set first file as reference ID if none exists
     if (files.length > 0 && !referenceId) {
       setReferenceId(files[0].name.replace(/\.[^/.]+$/, ""));
@@ -340,9 +414,10 @@ const Utilization = () => {
     setTotalPages(newFiles[0]?.pages || 1);
     toast({
       title: "Files Uploaded",
-      description: `${files.length} file(s) uploaded successfully`
+      description: `${files.length} file(s) uploaded successfully`,
     });
   };
+
   const handleFileSelection = (index: number) => {
     setSelectedFileIndex(index);
     const selectedFile = uploadedFiles[index];
@@ -352,7 +427,7 @@ const Utilization = () => {
     setSelectedPages([]);
     setSplitPdfs(null);
     setSelectedPdfForTagging(null);
-
+    
     // Reset form data for new file
     setMainServiceType('');
     setMainPageUtilization({});
@@ -362,9 +437,15 @@ const Utilization = () => {
       qcStatus: ''
     });
   };
+
   const handlePageSelection = (pageNum: number) => {
-    setSelectedPages(prev => prev.includes(pageNum) ? prev.filter(p => p !== pageNum) : [...prev, pageNum]);
+    setSelectedPages(prev => 
+      prev.includes(pageNum) 
+        ? prev.filter(p => p !== pageNum)
+        : [...prev, pageNum]
+    );
   };
+
   const handleSplitPdf = () => {
     if (selectedPages.length === 0) {
       toast({
@@ -374,11 +455,11 @@ const Utilization = () => {
       });
       return;
     }
-    const allPages = Array.from({
-      length: totalPages
-    }, (_, i) => i + 1);
+
+    const allPages = Array.from({length: totalPages}, (_, i) => i + 1);
     const pdf1Pages = selectedPages.sort((a, b) => a - b);
     const pdf2Pages = allPages.filter(p => !selectedPages.includes(p));
+    
     const splitData: SplitPdfData = {
       pdf1: {
         pages: pdf1Pages,
@@ -407,10 +488,11 @@ const Utilization = () => {
         }
       }
     };
+
     setSplitPdfs(splitData);
     setSelectedPages([]);
     setSelectedPdfForTagging('pdf1'); // Default to first PDF
-
+    
     // Clear main data except shared fields
     setMainServiceType('');
     setMainPageUtilization({});
@@ -419,26 +501,31 @@ const Utilization = () => {
       eliminatedFlags: [],
       qcStatus: ''
     });
+    
     toast({
       title: "PDF Split Successfully",
-      description: `Split into PDF 1 (${pdf1Pages.length} pages) and PDF 2 (${pdf2Pages.length} pages)`
+      description: `Split into PDF 1 (${pdf1Pages.length} pages) and PDF 2 (${pdf2Pages.length} pages)`,
     });
   };
+
   const handlePdfSelection = (pdfKey: 'pdf1' | 'pdf2') => {
     if (!splitPdfs) return;
+    
     setSelectedPdfForTagging(pdfKey);
     const pdfData = splitPdfs[pdfKey];
-
+    
     // Set current page to first page of selected PDF
     setCurrentPage(pdfData.pages[0]);
-
+    
     // Load PDF-specific reference ID
     setReferenceId(pdfData.referenceId);
   };
+
   const handlePageNavigation = (direction: 'prev' | 'next') => {
     if (splitPdfs && selectedPdfForTagging) {
       const currentPdf = splitPdfs[selectedPdfForTagging];
       const currentIndex = currentPdf.pages.indexOf(currentPage);
+      
       if (direction === 'prev' && currentIndex > 0) {
         setCurrentPage(currentPdf.pages[currentIndex - 1]);
       } else if (direction === 'next' && currentIndex < currentPdf.pages.length - 1) {
@@ -453,6 +540,7 @@ const Utilization = () => {
       }
     }
   };
+
   const getNavigationLimits = () => {
     if (splitPdfs && selectedPdfForTagging) {
       const currentPdf = splitPdfs[selectedPdfForTagging];
@@ -462,18 +550,22 @@ const Utilization = () => {
         isLast: currentIndex === currentPdf.pages.length - 1
       };
     }
-    return {
-      isFirst: currentPage === 1,
-      isLast: currentPage === totalPages
-    };
+    
+    return { isFirst: currentPage === 1, isLast: currentPage === totalPages };
   };
+
   const handleQualityChange = (quality: string) => {
-    setSelectedQuality(prev => prev.includes(quality) ? prev.filter(q => q !== quality) : [...prev, quality]);
+    setSelectedQuality(prev => 
+      prev.includes(quality) 
+        ? prev.filter(q => q !== quality)
+        : [...prev, quality]
+    );
   };
 
   // Helper function to get all selected items across both PDFs
   const getAllSelectedItems = () => {
     const allSelected = new Set<string>();
+    
     if (splitPdfs) {
       // Get all selected items from both PDFs
       Object.values(splitPdfs.pdf1.pageUtilization).forEach(pageData => {
@@ -487,6 +579,7 @@ const Utilization = () => {
           }
         });
       });
+      
       Object.values(splitPdfs.pdf2.pageUtilization).forEach(pageData => {
         Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
           if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
@@ -512,6 +605,7 @@ const Utilization = () => {
         });
       });
     }
+    
     return allSelected;
   };
 
@@ -519,29 +613,38 @@ const Utilization = () => {
   const isItemSelectedInCurrentPdf = (itemKey: string) => {
     if (splitPdfs && selectedPdfForTagging) {
       const currentPdf = splitPdfs[selectedPdfForTagging];
-      return Object.values(currentPdf.pageUtilization).some(pageData => pageData.selectedItems[itemKey]);
+      return Object.values(currentPdf.pageUtilization).some(pageData => 
+        pageData.selectedItems[itemKey]
+      );
     } else {
       // For non-split PDFs, check across all pages
-      return Object.values(mainPageUtilization).some(pageData => pageData.selectedItems[itemKey]);
+      return Object.values(mainPageUtilization).some(pageData => 
+        pageData.selectedItems[itemKey]
+      );
     }
   };
 
   // Helper function to check if an item is selected in the other PDF (for split PDFs only)
   const isItemSelectedInOtherPdf = (itemKey: string) => {
     if (!splitPdfs || !selectedPdfForTagging) return false;
+    
     const otherPdf = selectedPdfForTagging === 'pdf1' ? 'pdf2' : 'pdf1';
     const otherPdfData = splitPdfs[otherPdf];
-    return Object.values(otherPdfData.pageUtilization).some(pageData => pageData.selectedItems[itemKey]);
+    
+    return Object.values(otherPdfData.pageUtilization).some(pageData => 
+      pageData.selectedItems[itemKey]
+    );
   };
+
   const handleServiceItemToggle = (category: string, item: string) => {
     const key = `${category}-${item}`;
     const currentPageData = getCurrentPageData();
     const currentSelectedItems = currentPageData?.selectedItems || {};
-
+    
     // If item is already selected in current PDF, allow toggling it off
     const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(key);
     const isCurrentlySelected = currentSelectedItems[key];
-
+    
     // Only prevent selection if it's selected in the OTHER PDF (for split PDFs)
     if (!isCurrentlySelected && splitPdfs && isItemSelectedInOtherPdf(key)) {
       toast({
@@ -551,6 +654,7 @@ const Utilization = () => {
       });
       return;
     }
+    
     const newSelected = !isSelectedInCurrentPdf;
     const newSelectedItems = {
       ...currentSelectedItems,
@@ -562,17 +666,19 @@ const Utilization = () => {
     const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     const hasAnySelected = categoryItems.some(childItem => newSelectedItems[`${category}-${childItem}`]);
-
+    
     // Update parent category selection based on children
     if (hasAnySelected && !newSelectedItems[category]) {
       newSelectedItems[category] = true;
     } else if (!hasAnySelected && newSelectedItems[category]) {
       newSelectedItems[category] = false;
     }
-    updateCurrentPageData({
+    
+    updateCurrentPageData({ 
       selectedItems: newSelectedItems
     });
   };
+
   const handleCategoryToggle = (category: string) => {
     const currentPageData = getCurrentPageData();
     const currentSelectedItems = currentPageData?.selectedItems || {};
@@ -583,10 +689,13 @@ const Utilization = () => {
       const itemKey = `${category}-${item}`;
       return currentSelectedItems[itemKey] || isItemSelectedInCurrentPdf(itemKey);
     });
-
+    
     // Check if any items in this category are selected in the OTHER PDF (for split PDFs)
     if (!allSelected && splitPdfs) {
-      const conflictingItems = categoryItems.filter(item => isItemSelectedInOtherPdf(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]);
+      const conflictingItems = categoryItems.filter(item => 
+        isItemSelectedInOtherPdf(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]
+      );
+      
       if (conflictingItems.length > 0) {
         toast({
           title: "Items Already Selected in Other PDF",
@@ -596,13 +705,12 @@ const Utilization = () => {
         return;
       }
     }
-    const newSelectedItems = {
-      ...currentSelectedItems
-    };
-
+    
+    const newSelectedItems = { ...currentSelectedItems };
+    
     // Toggle category header
     newSelectedItems[category] = !allSelected;
-
+    
     // Toggle all items in category
     categoryItems.forEach(item => {
       const key = `${category}-${item}`;
@@ -611,24 +719,30 @@ const Utilization = () => {
         newSelectedItems[key] = !allSelected;
       }
     });
-    updateCurrentPageData({
+    
+    updateCurrentPageData({ 
       selectedItems: newSelectedItems
     });
   };
+
   const handleEliminateItem = (item: string, type: 'demographics' | 'flags') => {
     const currentQC = getCurrentQCVerification();
+    
     if (type === 'demographics') {
-      const newEliminatedDemographics = currentQC.eliminatedDemographics.includes(item) ? currentQC.eliminatedDemographics.filter(i => i !== item) : [...currentQC.eliminatedDemographics, item];
-      updateCurrentQCVerification({
-        eliminatedDemographics: newEliminatedDemographics
-      });
+      const newEliminatedDemographics = currentQC.eliminatedDemographics.includes(item) 
+        ? currentQC.eliminatedDemographics.filter(i => i !== item)
+        : [...currentQC.eliminatedDemographics, item];
+      
+      updateCurrentQCVerification({ eliminatedDemographics: newEliminatedDemographics });
     } else {
-      const newEliminatedFlags = currentQC.eliminatedFlags.includes(item) ? currentQC.eliminatedFlags.filter(i => i !== item) : [...currentQC.eliminatedFlags, item];
-      updateCurrentQCVerification({
-        eliminatedFlags: newEliminatedFlags
-      });
+      const newEliminatedFlags = currentQC.eliminatedFlags.includes(item)
+        ? currentQC.eliminatedFlags.filter(i => i !== item)
+        : [...currentQC.eliminatedFlags, item];
+      
+      updateCurrentQCVerification({ eliminatedFlags: newEliminatedFlags });
     }
   };
+
   const handleDelete = () => {
     setUploadedFiles([]);
     setSelectedFileIndex(0);
@@ -647,92 +761,132 @@ const Utilization = () => {
     });
     toast({
       title: "Data Cleared",
-      description: "All data has been cleared"
+      description: "All data has been cleared",
     });
   };
+
   const filteredServices = () => {
     const currentServiceType = getCurrentServiceType();
+    
     if (!currentServiceType) {
       return {};
     }
+    
     const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
+    
     if (!searchTerm) return currentServices;
+    
     const filtered: Record<string, string[]> = {};
     Object.entries(currentServices).forEach(([category, items]) => {
-      const filteredItems = items.filter(item => item.toLowerCase().includes(searchTerm.toLowerCase()) || category.toLowerCase().includes(searchTerm.toLowerCase()));
+      const filteredItems = items.filter(item => 
+        item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        category.toLowerCase().includes(searchTerm.toLowerCase())
+      );
       if (filteredItems.length > 0) {
         filtered[category] = filteredItems;
       }
     });
     return filtered;
   };
+
   const renderServiceItems = () => {
     const currentServiceType = getCurrentServiceType();
     const currentPageData = getCurrentPageData();
-
+    
     // For Consult, show a message that no utilization items are needed
     if (currentServiceType === 'Consult') {
-      return <div className="text-center py-8 text-gray-500">
+      return (
+        <div className="text-center py-8 text-gray-500">
           <p>No utilization items required for Consult service type.</p>
-        </div>;
+        </div>
+      );
     }
 
     // If no service type is selected, show a message
     if (!currentServiceType) {
-      return <div className="text-center py-8 text-gray-500">
+      return (
+        <div className="text-center py-8 text-gray-500">
           <p>Please select a service type to view utilization items.</p>
-        </div>;
+        </div>
+      );
     }
+
     const services = filteredServices();
+    
     if (!services || Object.keys(services).length === 0) {
-      return <div className="text-center py-8 text-gray-500">
+      return (
+        <div className="text-center py-8 text-gray-500">
           <p>No services found for the selected type.</p>
-        </div>;
+        </div>
+      );
     }
+    
     return Object.entries(services).map(([category, items]) => {
       const categoryItemIds = items.map(item => `${category}-${item}`);
       const selectedItems = currentPageData?.selectedItems || {};
-
+      
       // Count items selected on current page OR selected anywhere in current PDF
-      const selectedCount = categoryItemIds.filter(id => selectedItems[id] || isItemSelectedInCurrentPdf(id)).length;
+      const selectedCount = categoryItemIds.filter(id => 
+        selectedItems[id] || isItemSelectedInCurrentPdf(id)
+      ).length;
       const hasAnySelected = selectedCount > 0;
-      return <div key={category} className="mb-4">
+
+      return (
+        <div key={category} className="mb-4">
           <div className="flex items-center space-x-2 mb-2">
-            <Checkbox checked={hasAnySelected} onCheckedChange={() => handleCategoryToggle(category)} />
+            <Checkbox
+              checked={hasAnySelected}
+              onCheckedChange={() => handleCategoryToggle(category)}
+            />
             <Label className="font-semibold cursor-pointer" onClick={() => handleCategoryToggle(category)}>
               {category} ({selectedCount}/{categoryItemIds.length})
             </Label>
           </div>
           <div className="ml-6 space-y-1">
             {items.map(item => {
-            const itemKey = `${category}-${item}`;
-            const isSelectedOnCurrentPage = selectedItems[itemKey] || false;
-            const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(itemKey);
-            const isSelectedInOtherPdf = isItemSelectedInOtherPdf(itemKey);
-
-            // Show as checked if selected anywhere in current PDF
-            const isChecked = isSelectedOnCurrentPage || isSelectedInCurrentPdf;
-            // Disable if selected in other PDF but not in current PDF
-            const isDisabled = isSelectedInOtherPdf && !isSelectedInCurrentPdf;
-            return <div key={item} className="flex items-center space-x-2">
-                  <Checkbox checked={isChecked} disabled={isDisabled} onCheckedChange={() => handleServiceItemToggle(category, item)} />
-                  <Label className={`text-sm cursor-pointer ${isDisabled ? 'text-gray-400 line-through' : ''}`} onClick={() => !isDisabled && handleServiceItemToggle(category, item)}>
+              const itemKey = `${category}-${item}`;
+              const isSelectedOnCurrentPage = selectedItems[itemKey] || false;
+              const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(itemKey);
+              const isSelectedInOtherPdf = isItemSelectedInOtherPdf(itemKey);
+              
+              // Show as checked if selected anywhere in current PDF
+              const isChecked = isSelectedOnCurrentPage || isSelectedInCurrentPdf;
+              // Disable if selected in other PDF but not in current PDF
+              const isDisabled = isSelectedInOtherPdf && !isSelectedInCurrentPdf;
+              
+              return (
+                <div key={item} className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={isChecked}
+                    disabled={isDisabled}
+                    onCheckedChange={() => handleServiceItemToggle(category, item)}
+                  />
+                  <Label 
+                    className={`text-sm cursor-pointer ${
+                      isDisabled ? 'text-gray-400 line-through' : ''
+                    }`} 
+                    onClick={() => !isDisabled && handleServiceItemToggle(category, item)}
+                  >
                     {item}
-                    {isDisabled && <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>}
+                    {isDisabled && (
+                      <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
+                    )}
                   </Label>
-                </div>;
-          })}
+                </div>
+              );
+            })}
           </div>
-        </div>;
+        </div>
+      );
     });
   };
-  const {
-    isFirst,
-    isLast
-  } = getNavigationLimits();
+
+  const { isFirst, isLast } = getNavigationLimits();
   const currentQC = getCurrentQCVerification();
-  return <div className="min-h-screen bg-gray-50">
-      <div className="1.\tLab Partner Selection:\no\tInclude an option to select the executing lab partner in addition to the lab partner name.\no\tOnce both names are selected, the top-right section will collapse to improve visibility for utilization tagging.\n2.\tEnhanced Utilization Tagging View:\no\tReplace checkboxes with accordion chips for a more intuitive tagging experience.\no\tEnable horizontal (right-to-left) scrolling to navigate the tagging interface.\n3.\tQC Flags Enhancements:\no\tAdd a remarks section to capture specific issues found in the verified demographics.\n4.\tPDF Preview Improvements:\no\tIntroduce a zoom option for better readability of the document preview.\n">
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
@@ -750,7 +904,14 @@ const Utilization = () => {
               <CardContent className="flex-1 space-y-4">
                 {/* File Upload */}
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  <input type="file" multiple accept=".pdf" onChange={handleFileUpload} className="hidden" id="pdf-upload" />
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="pdf-upload"
+                  />
                   <label htmlFor="pdf-upload" className="cursor-pointer">
                     <div className="text-center">
                       <Upload className="mx-auto h-12 w-12 text-gray-400" />
@@ -763,43 +924,67 @@ const Utilization = () => {
                 </div>
 
                 {/* Bulk Upload Reference ID Selection */}
-                {uploadedFiles.length > 1 && <div>
+                {uploadedFiles.length > 1 && (
+                  <div>
                     <Label className="text-sm font-medium mb-2 block">Select Reference ID to Process:</Label>
                     <ScrollArea className="h-32">
                       <div className="space-y-2">
-                        {uploadedFiles.map((file, index) => <Button key={index} variant={selectedFileIndex === index ? "default" : "outline"} size="sm" onClick={() => handleFileSelection(index)} className="w-full justify-start text-left">
+                        {uploadedFiles.map((file, index) => (
+                          <Button
+                            key={index}
+                            variant={selectedFileIndex === index ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleFileSelection(index)}
+                            className="w-full justify-start text-left"
+                          >
                             <FileText className="h-4 w-4 mr-2" />
                             <span className="truncate">{file.name}</span>
-                          </Button>)}
+                          </Button>
+                        ))}
                       </div>
                     </ScrollArea>
-                  </div>}
+                  </div>
+                )}
 
                 {/* Service Type Selection for Entire PDF/Split PDF */}
-                {uploadedFiles.length > 0 && <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                {uploadedFiles.length > 0 && (
+                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
                     <Label className="text-base font-medium mb-2 block">
                       Service Type {splitPdfs && selectedPdfForTagging ? `for ${selectedPdfForTagging.toUpperCase()}` : '(Entire PDF)'} *
                     </Label>
                     <div className="flex gap-2">
                       {serviceTypeOptions.map(type => {
-                    const currentServiceType = getCurrentServiceType();
-                    return <Button key={type} variant={currentServiceType === type ? "default" : "outline"} onClick={() => updateServiceType(type)} size="sm">
+                        const currentServiceType = getCurrentServiceType();
+                        return (
+                          <Button
+                            key={type}
+                            variant={currentServiceType === type ? "default" : "outline"}
+                            onClick={() => updateServiceType(type)}
+                            size="sm"
+                          >
                             {type}
-                          </Button>;
-                  })}
+                          </Button>
+                        );
+                      })}
                     </div>
-                    {!getCurrentServiceType() && <p className="text-sm text-gray-600 mt-1">Please select a service type</p>}
-                  </div>}
+                    {!getCurrentServiceType() && (
+                      <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
+                    )}
+                  </div>
+                )}
 
                 {/* PDF Preview and Controls */}
-                {uploadedFiles.length > 0 && <div className="border rounded-lg p-4 flex-1">
+                {uploadedFiles.length > 0 && (
+                  <div className="border rounded-lg p-4 flex-1">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-medium">PDF Preview</h3>
                       <div className="flex items-center gap-2">
-                        {!splitPdfs && <Button variant="outline" size="sm" onClick={handleSplitPdf} disabled={selectedPages.length === 0}>
+                        {!splitPdfs && (
+                          <Button variant="outline" size="sm" onClick={handleSplitPdf} disabled={selectedPages.length === 0}>
                             <Split className="h-4 w-4 mr-1" />
                             Split Selected
-                          </Button>}
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm">
                           <Download className="h-4 w-4 mr-1" />
                           Download
@@ -808,24 +993,36 @@ const Utilization = () => {
                     </div>
 
                     {/* Page Selection for Splitting - Only show if not split yet */}
-                    {!splitPdfs && <div className="mb-4">
+                    {!splitPdfs && (
+                      <div className="mb-4">
                         <Label className="text-sm font-medium mb-2 block">Select Pages to Split (Optional):</Label>
                         <ScrollArea className="h-48">
                           <div className="grid grid-cols-3 gap-2 p-2">
-                            {Array.from({
-                        length: totalPages
-                      }, (_, i) => i + 1).map(pageNum => <div key={pageNum} className={`relative cursor-pointer border-2 rounded-lg p-2 transition-all ${selectedPages.includes(pageNum) ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`} onClick={() => handlePageSelection(pageNum)}>
+                            {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
+                              <div
+                                key={pageNum}
+                                className={`relative cursor-pointer border-2 rounded-lg p-2 transition-all ${
+                                  selectedPages.includes(pageNum) 
+                                    ? "border-blue-500 bg-blue-50" 
+                                    : "border-gray-200 hover:border-gray-300"
+                                }`}
+                                onClick={() => handlePageSelection(pageNum)}
+                              >
                                 <div className="bg-white h-20 rounded border flex flex-col items-center justify-center p-2">
                                   <FileText className="h-6 w-6 text-gray-400 mb-1" />
                                   <div className="text-xs text-gray-500">{pageNum}</div>
                                 </div>
-                                {selectedPages.includes(pageNum) && <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
+                                {selectedPages.includes(pageNum) && (
+                                  <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
                                     ✓
-                                  </div>}
-                              </div>)}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </ScrollArea>
-                      </div>}
+                      </div>
+                    )}
 
                     {/* Current Page Preview */}
                     <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4 border">
@@ -846,41 +1043,74 @@ const Utilization = () => {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <Button variant="outline" size="sm" onClick={() => handlePageNavigation('prev')} disabled={isFirst}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageNavigation('prev')}
+                        disabled={isFirst}
+                      >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="text-sm">
                         Page {currentPage} of {splitPdfs && selectedPdfForTagging ? splitPdfs[selectedPdfForTagging].pages.length : totalPages}
-                        {splitPdfs && selectedPdfForTagging && <span className="text-xs text-gray-500 block">
+                        {splitPdfs && selectedPdfForTagging && (
+                          <span className="text-xs text-gray-500 block">
                             ({splitPdfs[selectedPdfForTagging].pages.join(', ')})
-                          </span>}
+                          </span>
+                        )}
                       </span>
-                      <Button variant="outline" size="sm" onClick={() => handlePageNavigation('next')} disabled={isLast}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageNavigation('next')}
+                        disabled={isLast}
+                      >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
 
                     {/* Split PDFs Preview and Selection */}
-                    {splitPdfs && <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    {splitPdfs && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                         <h4 className="font-medium mb-2">Select PDF to tag:</h4>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className={`cursor-pointer p-3 rounded border-2 transition-all ${selectedPdfForTagging === 'pdf1' ? 'border-blue-500 bg-blue-100' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handlePdfSelection('pdf1')}>
+                          <div 
+                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
+                              selectedPdfForTagging === 'pdf1' 
+                                ? 'border-blue-500 bg-blue-100' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => handlePdfSelection('pdf1')}
+                          >
                             <Label className="text-sm font-medium cursor-pointer">PDF 1 (Pages: {splitPdfs.pdf1.pages.join(', ')})</Label>
                             <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
                               <FileText className="h-6 w-6 text-blue-500" />
                             </div>
-                            {selectedPdfForTagging === 'pdf1' && <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>}
+                            {selectedPdfForTagging === 'pdf1' && (
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
+                            )}
                           </div>
-                          <div className={`cursor-pointer p-3 rounded border-2 transition-all ${selectedPdfForTagging === 'pdf2' ? 'border-blue-500 bg-blue-100' : 'border-gray-200 hover:border-gray-300'}`} onClick={() => handlePdfSelection('pdf2')}>
+                          <div 
+                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
+                              selectedPdfForTagging === 'pdf2' 
+                                ? 'border-blue-500 bg-blue-100' 
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => handlePdfSelection('pdf2')}
+                          >
                             <Label className="text-sm font-medium cursor-pointer">PDF 2 (Pages: {splitPdfs.pdf2.pages.join(', ')})</Label>
                             <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
                               <FileText className="h-6 w-6 text-green-500" />
                             </div>
-                            {selectedPdfForTagging === 'pdf2' && <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>}
+                            {selectedPdfForTagging === 'pdf2' && (
+                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
+                            )}
                           </div>
                         </div>
-                      </div>}
-                  </div>}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Delete Button */}
                 <Button variant="destructive" onClick={handleDelete} className="w-full">
@@ -905,7 +1135,12 @@ const Utilization = () => {
                   {/* Reference ID */}
                   <div>
                     <Label htmlFor="reference-id">Reference ID</Label>
-                    <Input id="reference-id" value={referenceId} onChange={e => setReferenceId(e.target.value)} placeholder="Auto-filled from PDF name" />
+                    <Input
+                      id="reference-id"
+                      value={referenceId}
+                      onChange={(e) => setReferenceId(e.target.value)}
+                      placeholder="Auto-filled from PDF name"
+                    />
                   </div>
 
                   {/* Expected Count - Now shows total for PDF */}
@@ -914,7 +1149,14 @@ const Utilization = () => {
                       Expected Count 
                       {splitPdfs && selectedPdfForTagging ? ` (${selectedPdfForTagging.toUpperCase()} Total)` : ' (Total)'}
                     </Label>
-                    <Input id="expected-count" type="number" value={getTotalExpectedCount().toString()} readOnly className="bg-gray-50" placeholder="Auto-calculated from selections" />
+                    <Input
+                      id="expected-count"
+                      type="number"
+                      value={getTotalExpectedCount().toString()}
+                      readOnly
+                      className="bg-gray-50"
+                      placeholder="Auto-calculated from selections"
+                    />
                   </div>
                 </div>
 
@@ -922,27 +1164,51 @@ const Utilization = () => {
                 <div>
                   <Label className="text-base font-medium">Report Quality *</Label>
                   <div className="grid grid-cols-3 gap-2 mt-2">
-                    {qualityOptions.map(quality => <Button key={quality} variant={selectedQuality.includes(quality) ? "default" : "outline"} size="sm" onClick={() => handleQualityChange(quality)} className="justify-start">
+                    {qualityOptions.map(quality => (
+                      <Button
+                        key={quality}
+                        variant={selectedQuality.includes(quality) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleQualityChange(quality)}
+                        className="justify-start"
+                      >
                         {quality}
-                      </Button>)}
+                      </Button>
+                    ))}
                   </div>
-                  {selectedQuality.length === 0 && <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>}
+                  {selectedQuality.length === 0 && (
+                    <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>
+                  )}
                 </div>
 
                 {/* Lab Partner */}
                 <div>
                   <Label>Executing Lab Partner *</Label>
-                  <Select value={selectedLabPartner} onValueChange={value => setSelectedLabPartner(value)}>
+                  <Select 
+                    value={selectedLabPartner} 
+                    onValueChange={(value) => setSelectedLabPartner(value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select lab partner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {labPartners.map(partner => <SelectItem key={partner} value={partner}>{partner}</SelectItem>)}
+                      {labPartners.map(partner => (
+                        <SelectItem key={partner} value={partner}>{partner}</SelectItem>
+                      ))}
                       <SelectItem value="custom">Add New Partner</SelectItem>
                     </SelectContent>
                   </Select>
-                  {selectedLabPartner === 'custom' && <Input className="mt-2" placeholder="Enter new lab partner name" value={customLabPartner} onChange={e => setCustomLabPartner(e.target.value)} />}
-                  {!selectedLabPartner && <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>}
+                  {selectedLabPartner === 'custom' && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Enter new lab partner name"
+                      value={customLabPartner}
+                      onChange={(e) => setCustomLabPartner(e.target.value)}
+                    />
+                  )}
+                  {!selectedLabPartner && (
+                    <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -952,9 +1218,11 @@ const Utilization = () => {
               <CardHeader>
                 <CardTitle>
                   Utilization & QC Verification
-                  {splitPdfs && selectedPdfForTagging && <span className="text-sm font-normal text-blue-600 block">
+                  {splitPdfs && selectedPdfForTagging && (
+                    <span className="text-sm font-normal text-blue-600 block">
                       {selectedPdfForTagging.toUpperCase()}
-                    </span>}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-full">
@@ -971,17 +1239,27 @@ const Utilization = () => {
                   </TabsList>
 
                   <TabsContent value="utilization" className="flex-1 h-0">
-                    {!isMandatoryFieldsFilled() ? <div className="flex items-center justify-center h-full">
+                    {!isMandatoryFieldsFilled() ? (
+                      <div className="flex items-center justify-center h-full">
                         <div className="text-center">
                           <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
                           <p className="text-sm text-gray-400">Please fill all mandatory fields to continue</p>
                         </div>
-                      </div> : <div className="space-y-4 h-full flex flex-col">
+                      </div>
+                    ) : (
+                      <div className="space-y-4 h-full flex flex-col">
                         {/* Search within Utilization Items - Only show for non-Consult types */}
-                        {getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && <div className="relative">
+                        {getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
+                          <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input placeholder="Search utilization items..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-                          </div>}
+                            <Input
+                              placeholder="Search utilization items..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                        )}
 
                         <ScrollArea className="flex-1">
                           <div>
@@ -991,15 +1269,19 @@ const Utilization = () => {
                                 Page {currentPage}
                               </span>
                             </h3>
-                            {!hasUtilizationSelected() && getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && <p className="text-sm text-red-600 mb-3">Please select at least one utilization item for this page</p>}
+                            {!hasUtilizationSelected() && getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
+                              <p className="text-sm text-red-600 mb-3">Please select at least one utilization item for this page</p>
+                            )}
                             {renderServiceItems()}
                           </div>
                         </ScrollArea>
-                      </div>}
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="qc" className="flex-1 h-0">
-                    {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? <div className="flex items-center justify-center h-full">
+                    {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? (
+                      <div className="flex items-center justify-center h-full">
                         <div className="text-center">
                           <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
                           <p className="text-sm text-gray-400">
@@ -1007,17 +1289,29 @@ const Utilization = () => {
                             {isMandatoryFieldsFilled() && !hasUtilizationSelected() && "Please select at least one utilization item"}
                           </p>
                         </div>
-                      </div> : <ScrollArea className="h-full">
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-full">
                         <div className="space-y-6">
                           {/* QC Step: Verify Demographics */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">Verify Demographics *</Label>
-                            {!isDemographicsStarted() && <Label className="text-sm text-gray-600 mb-3 block">Click items to eliminate from verification</Label>}
+                            {!isDemographicsStarted() && (
+                              <Label className="text-sm text-gray-600 mb-3 block">Click items to eliminate from verification</Label>
+                            )}
                             <div className="space-y-2">
-                              {qcDemographicItems.map(item => <Button key={item} variant={currentQC.eliminatedDemographics.includes(item) ? "destructive" : "outline"} size="sm" onClick={() => handleEliminateItem(item, 'demographics')} className="mr-2 mb-2">
+                              {qcDemographicItems.map(item => (
+                                <Button
+                                  key={item}
+                                  variant={currentQC.eliminatedDemographics.includes(item) ? "destructive" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleEliminateItem(item, 'demographics')}
+                                  className="mr-2 mb-2"
+                                >
                                   {currentQC.eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
                                   {item}
-                                </Button>)}
+                                </Button>
+                              ))}
                             </div>
                           </div>
 
@@ -1025,19 +1319,28 @@ const Utilization = () => {
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Flags *</Label>
                             <div className="space-y-2">
-                              {qcFlagItems.map(item => <Button key={item} variant={currentQC.eliminatedFlags.includes(item) ? "destructive" : "outline"} size="sm" onClick={() => handleEliminateItem(item, 'flags')} className="mr-2 mb-2">
+                              {qcFlagItems.map(item => (
+                                <Button
+                                  key={item}
+                                  variant={currentQC.eliminatedFlags.includes(item) ? "destructive" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleEliminateItem(item, 'flags')}
+                                  className="mr-2 mb-2"
+                                >
                                   {currentQC.eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
                                   {item}
-                                </Button>)}
+                                </Button>
+                              ))}
                             </div>
                           </div>
 
                           {/* QC Tracker Status */}
                           <div>
                             <Label className="text-base font-medium mb-2 block">QC Status *</Label>
-                            <Select value={currentQC.qcStatus} onValueChange={value => updateCurrentQCVerification({
-                          qcStatus: value
-                        })}>
+                            <Select 
+                              value={currentQC.qcStatus} 
+                              onValueChange={(value) => updateCurrentQCVerification({ qcStatus: value })}
+                            >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Status" />
                               </SelectTrigger>
@@ -1062,7 +1365,8 @@ const Utilization = () => {
                             </div>
                           </div>
                         </div>
-                      </ScrollArea>}
+                      </ScrollArea>
+                    )}
                   </TabsContent>
                 </Tabs>
 
@@ -1070,12 +1374,14 @@ const Utilization = () => {
                 <div className="pt-4 border-t mt-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Auto-save enabled</span>
-                    <Button onClick={() => {
-                    toast({
-                      title: "Data Saved",
-                      description: "All data has been saved successfully"
-                    });
-                  }}>
+                    <Button 
+                      onClick={() => {
+                        toast({
+                          title: "Data Saved",
+                          description: "All data has been saved successfully",
+                        });
+                      }}
+                    >
                       Save Manually
                     </Button>
                   </div>
@@ -1085,6 +1391,8 @@ const Utilization = () => {
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Utilization;
