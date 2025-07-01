@@ -740,8 +740,11 @@ const Utilization = () => {
                       />
                     </div>
                     <div>
-                      <Label className="text-sm">Quality</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <Label className="text-sm font-semibold text-red-600 flex items-center gap-1">
+                        Quality *
+                        <span className="text-red-500">Important</span>
+                      </Label>
+                      <div className="flex flex-wrap gap-1 mt-1 p-2 border-2 border-red-200 rounded-md bg-red-50">
                         {qualityOptions.map(quality => (
                           <Badge
                             key={quality}
@@ -778,8 +781,12 @@ const Utilization = () => {
                   <Tabs defaultValue="service" className="h-full flex flex-col">
                     <TabsList className="grid w-full grid-cols-3 mb-4">
                       <TabsTrigger value="service">Service Type</TabsTrigger>
-                      <TabsTrigger value="demographics">Demographics</TabsTrigger>
-                      <TabsTrigger value="qc">QC & Remarks</TabsTrigger>
+                      <TabsTrigger value="demographics" className="font-semibold text-red-600">
+                        Demographics *
+                      </TabsTrigger>
+                      <TabsTrigger value="qc" className="font-semibold text-red-600">
+                        QC *
+                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="service" className="flex-1 h-0">
@@ -830,8 +837,11 @@ const Utilization = () => {
 
                     <TabsContent value="demographics" className="flex-1 h-0">
                       <ScrollArea className="h-full">
-                        <div className="space-y-4">
-                          <Label className="text-base font-medium">Demographics Verification</Label>
+                        <div className="space-y-4 p-2 border-2 border-red-200 rounded-md bg-red-50">
+                          <Label className="text-base font-semibold text-red-600 flex items-center gap-2">
+                            Demographics Verification *
+                            <span className="text-red-500 text-sm">Important Field</span>
+                          </Label>
                           {renderDemographicsChips()}
                         </div>
                       </ScrollArea>
@@ -840,10 +850,13 @@ const Utilization = () => {
                     <TabsContent value="qc" className="flex-1 h-0">
                       <ScrollArea className="h-full">
                         <div className="space-y-6">
-                          <div>
-                            <Label className="text-base font-medium mb-3 block">QC Status</Label>
+                          <div className="p-3 border-2 border-red-200 rounded-md bg-red-50">
+                            <Label className="text-base font-semibold text-red-600 flex items-center gap-2 mb-3">
+                              QC Status *
+                              <span className="text-red-500 text-sm">Important Field</span>
+                            </Label>
                             <Select value={qcStatus} onValueChange={setQcStatus}>
-                              <SelectTrigger>
+                              <SelectTrigger className="border-red-300">
                                 <SelectValue placeholder="Select QC status" />
                               </SelectTrigger>
                               <SelectContent>
@@ -864,8 +877,11 @@ const Utilization = () => {
                             />
                           </div>
 
-                          <div>
-                            <Label className="text-base font-medium mb-3 block">QC Flags</Label>
+                          <div className="p-3 border-2 border-red-200 rounded-md bg-red-50">
+                            <Label className="text-base font-semibold text-red-600 flex items-center gap-2 mb-3">
+                              QC Flags *
+                              <span className="text-red-500 text-sm">Important Field</span>
+                            </Label>
                             {renderQCFlagsChips()}
                           </div>
                           
