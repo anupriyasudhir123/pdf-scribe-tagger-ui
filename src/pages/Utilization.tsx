@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -90,8 +89,9 @@ const labPartners = ["Apollo", "MEDI 5 Diagnostics", "Aarthi Scans", "Tata 1 MG 
 const executingLabPartners = ["Lab Corp", "Quest Diagnostics", "LabTests Plus", "Sonic Healthcare", "Metropolis Healthcare"];
 
 // Demographics and QC Flag options
-const demographicOptions = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
-const qcFlagOptions = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics", "Missing Signature", "Poor Image Quality"];
+const demographicOptions = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Lab Details"];
+const qcFlagOptions = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics"];
+const qcStatusOptions = ["Pending", "In Progress", "Completed", "On Hold", "Rejected"];
 
 interface FileData {
   name: string;
@@ -132,6 +132,8 @@ const Utilization = () => {
   const [customDemographics, setCustomDemographics] = useState<string[]>([]);
   const [selectedQCFlags, setSelectedQCFlags] = useState<Set<string>>(new Set());
   const [customQCFlags, setCustomQCFlags] = useState<string[]>([]);
+  const [qcStatus, setQcStatus] = useState('');
+  const [reportDate, setReportDate] = useState('');
   const [remarks, setRemarks] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -740,7 +742,7 @@ const Utilization = () => {
                     <div>
                       <Label className="text-sm">Quality</Label>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {qualityOptions.slice(0, 2).map(quality => (
+                        {qualityOptions.map(quality => (
                           <Badge
                             key={quality}
                             variant={selectedQuality.includes(quality) ? "default" : "outline"}
@@ -838,6 +840,30 @@ const Utilization = () => {
                     <TabsContent value="qc" className="flex-1 h-0">
                       <ScrollArea className="h-full">
                         <div className="space-y-6">
+                          <div>
+                            <Label className="text-base font-medium mb-3 block">QC Status</Label>
+                            <Select value={qcStatus} onValueChange={setQcStatus}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select QC status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {qcStatusOptions.map(status => (
+                                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label className="text-base font-medium mb-2 block">Report Date</Label>
+                            <Input
+                              type="date"
+                              value={reportDate}
+                              onChange={(e) => setReportDate(e.target.value)}
+                              placeholder="Select report date"
+                            />
+                          </div>
+
                           <div>
                             <Label className="text-base font-medium mb-3 block">QC Flags</Label>
                             {renderQCFlagsChips()}
