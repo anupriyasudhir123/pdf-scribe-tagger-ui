@@ -1,13 +1,16 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
+import { Upload, Search, Download, Split, FileText, ChevronLeft, ChevronRight, Trash2, X, Plus, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Service data structure for Pathology
@@ -68,25 +71,7 @@ const pathologyServices = {
     "Interpretation / Result - PAP Smear", "Microorganisms - PAP Smear", "MICROSCOPIC OBSERVATIONS - PAP Smear",
     "Non-neoplastic Changes - PAP Smear", "Papanicolaou test (PAP Smear)", "Specimen - PAP Smear",
     "Specimen Adequacy - PAP Smear", "Squamous Abnormalities - PAP Smear"
-  ],
-  "Vitamin B12": ["Vitamin B12"],
-  "Vitamin D": ["VITAMIN D TOTAL", "VITAMIN D3"],
-  "Iron Profile": [
-    "Serum Iron", "Total Iron Binding Capacity (TIBC)", "Unsaturated Iron-Binding Capacity (UIBC)"
-  ],
-  "C-Reactive Protein (CRP)": [
-    "C-REACTIVE PROTEIN (CRP)", "High-sensitivity CRP (hs-CRP)"
-  ],
-  "Electrolytes": [
-    "CALCIUM", "Chloride", "PHOSPHORUS", "POTASSIUM", "Sodium"
-  ],
-  "Diabetes Profile": [
-    "Estimated Average Glucose (EAG)", "FASTING BLOOD SUGAR (GLUCOSE)", "GLYCATED HEMOGLOBIN",
-    "Mean Plasma Glucose Level", "MICROALBUMIN", "Postprandial Blood Glucose/Glucose-PP",
-    "Random Blood Sugar/Glucose (RBS)", "URINARY GLUCOSE"
-  ],
-  "Rheumatoid Factor (RF)": ["RHEUMATOID FACTOR (RF)"],
-  "Prostate Specific Antigen (PSA)": ["PROSTATE SPECIFIC ANTIGEN (PSA)"]
+  ]
 };
 
 const otherServices = {
@@ -102,10 +87,11 @@ const otherServices = {
 const qualityOptions = ["Skewed", "Dewarped", "Low Resolution", "Handwritten", "Digital Print", "Scanned"];
 const serviceTypeOptions = ["Pathology", "Other Services", "Consult"];
 const labPartners = ["Apollo", "MEDI 5 Diagnostics", "Aarthi Scans", "Tata 1 MG Lab", "Prognosis Laboratory"];
+const executingLabPartners = ["Lab Corp", "Quest Diagnostics", "LabTests Plus", "Sonic Healthcare", "Metropolis Healthcare"];
 
-// QC Demographics and Flags
-const qcDemographicItems = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
-const qcFlagItems = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics"];
+// Demographics and QC Flag options
+const demographicOptions = ["Patient Name", "UHID (Unique Health ID)", "Age", "Gender", "Doctor Name", "Report Date", "Lab Details"];
+const qcFlagOptions = ["Partial Report - Radiology", "Partial Report - Cardiology", "Pending Radiology", "Incorrect Demographics", "Missing Signature", "Poor Image Quality"];
 
 interface FileData {
   name: string;
@@ -113,37 +99,12 @@ interface FileData {
   pages: number;
 }
 
-interface PageUtilization {
+interface SplitSection {
+  id: string;
+  name: string;
+  pages: number[];
   serviceType: string;
-  selectedItems: Record<string, boolean>;
-  expectedCount: number;
-}
-
-interface QCVerification {
-  eliminatedDemographics: string[];
-  eliminatedFlags: string[];
-  qcStatus: string;
-}
-
-interface SplitPdfData {
-  pdf1: {
-    pages: number[];
-    referenceId: string;
-    serviceType: string;
-    expectedCount: number;
-    selectedItems: Record<string, boolean>;
-    pageUtilization: Record<number, PageUtilization>;
-    qcVerification: QCVerification;
-  };
-  pdf2: {
-    pages: number[];
-    referenceId: string;
-    serviceType: string;
-    expectedCount: number;
-    selectedItems: Record<string, boolean>;
-    pageUtilization: Record<number, PageUtilization>;
-    qcVerification: QCVerification;
-  };
+  selectedItems: Set<string>;
 }
 
 const Utilization = () => {
@@ -152,266 +113,45 @@ const Utilization = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPages, setSelectedPages] = useState<number[]>([]);
-  const [splitPdfs, setSplitPdfs] = useState<SplitPdfData | null>(null);
-  const [selectedPdfForTagging, setSelectedPdfForTagging] = useState<'pdf1' | 'pdf2' | null>(null);
+  const [splitSections, setSplitSections] = useState<SplitSection[]>([]);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(100);
   
-  // Page-wise utilization for non-split PDFs
-  const [mainPageUtilization, setMainPageUtilization] = useState<Record<number, PageUtilization>>({});
-  
-  // QC Verification for main PDF (non-split)
-  const [mainQCVerification, setMainQCVerification] = useState<QCVerification>({
-    eliminatedDemographics: [],
-    eliminatedFlags: [],
-    qcStatus: ''
-  });
-  
-  // Track all selected utilization items globally to prevent duplicates
-  const [globalSelectedItems, setGlobalSelectedItems] = useState<Set<string>>(new Set());
-  
-  // Shared fields between both PDFs
-  const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
+  // Lab Partner Selection
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
-  const [customLabPartner, setCustomLabPartner] = useState('');
+  const [selectedExecutingLabPartner, setSelectedExecutingLabPartner] = useState('');
+  const [customExecutingLabPartner, setCustomExecutingLabPartner] = useState('');
+  const [isLabSelectionComplete, setIsLabSelectionComplete] = useState(false);
   
-  // Main PDF data (for PDF-level info when not split)
+  // Form data
   const [referenceId, setReferenceId] = useState('');
-  const [mainServiceType, setMainServiceType] = useState('');
+  const [selectedQuality, setSelectedQuality] = useState<string[]>([]);
+  
+  // Demographics and QC
+  const [selectedDemographics, setSelectedDemographics] = useState<Set<string>>(new Set());
+  const [customDemographics, setCustomDemographics] = useState<string[]>([]);
+  const [selectedQCFlags, setSelectedQCFlags] = useState<Set<string>>(new Set());
+  const [customQCFlags, setCustomQCFlags] = useState<string[]>([]);
+  const [remarks, setRemarks] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
-
-  // Helper function to update global selected items
-  const updateGlobalSelectedItems = useCallback(() => {
-    const allSelected = new Set<string>();
-    
-    if (splitPdfs) {
-      // Get all selected items from both PDFs
-      [splitPdfs.pdf1, splitPdfs.pdf2].forEach(pdf => {
-        Object.values(pdf.pageUtilization).forEach(pageData => {
-          Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-            if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-              // Only count actual utilization items, not category headers
-              const parts = key.split('-');
-              if (parts.length > 1) {
-                allSelected.add(key);
-              }
-            }
-          });
-        });
-      });
-    } else {
-      // Get all selected items from main PDF
-      Object.values(mainPageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              allSelected.add(key);
-            }
-          }
-        });
-      });
-    }
-    
-    setGlobalSelectedItems(allSelected);
-  }, [splitPdfs, mainPageUtilization]);
-
-  // Helper function to get current QC verification data
-  const getCurrentQCVerification = (): QCVerification => {
-    if (splitPdfs && selectedPdfForTagging) {
-      return splitPdfs[selectedPdfForTagging].qcVerification;
-    }
-    return mainQCVerification;
-  };
-
-  // Helper function to update current QC verification data
-  const updateCurrentQCVerification = (updates: Partial<QCVerification>) => {
-    if (splitPdfs && selectedPdfForTagging) {
-      setSplitPdfs(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          [selectedPdfForTagging]: {
-            ...prev[selectedPdfForTagging],
-            qcVerification: {
-              ...prev[selectedPdfForTagging].qcVerification,
-              ...updates
-            }
-          }
-        };
-      });
-    } else {
-      setMainQCVerification(prev => ({
-        ...prev,
-        ...updates
-      }));
-    }
-  };
-
-  // Helper function to calculate total expected count for a PDF
-  const getTotalExpectedCount = () => {
-    if (splitPdfs && selectedPdfForTagging) {
-      const currentPdf = splitPdfs[selectedPdfForTagging];
-      let totalCount = 0;
-      
-      // Sum up all selected items across all pages of this PDF
-      Object.values(currentPdf.pageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              totalCount++;
-            }
-          }
-        });
-      });
-      
-      return totalCount;
-    } else {
-      // For non-split PDFs, sum across all pages
-      let totalCount = 0;
-      Object.values(mainPageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              totalCount++;
-            }
-          }
-        });
-      });
-      
-      return totalCount;
-    }
-  };
-
-  // Check if mandatory fields are filled
-  const isMandatoryFieldsFilled = () => {
-    return selectedQuality.length > 0 && getCurrentServiceType() && selectedLabPartner;
-  };
-
-  // Check if at least one utilization item is selected for current page
-  const hasUtilizationSelected = () => {
-    const currentServiceType = getCurrentServiceType();
-    if (currentServiceType === 'Consult') return true; // Consult doesn't need utilization items
-    
-    const currentPageData = getCurrentPageData();
-    return currentPageData ? Object.values(currentPageData.selectedItems).some(Boolean) : false;
-  };
-
-  // Check if demographics verification has been started
-  const isDemographicsStarted = () => {
-    const currentQC = getCurrentQCVerification();
-    return currentQC.eliminatedDemographics.length > 0;
-  };
-
-  const getCurrentServiceType = () => {
-    if (splitPdfs && selectedPdfForTagging) {
-      const currentPageData = getCurrentPageData();
-      return currentPageData?.serviceType || splitPdfs[selectedPdfForTagging].serviceType;
-    }
-    const currentPageData = getCurrentPageData();
-    return currentPageData?.serviceType || mainServiceType;
-  };
-
-  const getCurrentPageData = (): PageUtilization | null => {
-    if (splitPdfs && selectedPdfForTagging) {
-      return splitPdfs[selectedPdfForTagging].pageUtilization[currentPage] || null;
-    }
-    return mainPageUtilization[currentPage] || null;
-  };
-
-  const updateCurrentPageData = (updates: Partial<PageUtilization>) => {
-    if (splitPdfs && selectedPdfForTagging) {
-      setSplitPdfs(prev => {
-        if (!prev) return null;
-        const currentPdf = prev[selectedPdfForTagging];
-        const currentPageData = currentPdf.pageUtilization[currentPage] || {
-          serviceType: currentPdf.serviceType,
-          selectedItems: {},
-          expectedCount: 0
-        };
-        
-        const updated = {
-          ...prev,
-          [selectedPdfForTagging]: {
-            ...currentPdf,
-            pageUtilization: {
-              ...currentPdf.pageUtilization,
-              [currentPage]: {
-                ...currentPageData,
-                ...updates
-              }
-            }
-          }
-        };
-        
-        // Update global selected items after state change
-        setTimeout(() => updateGlobalSelectedItems(), 0);
-        
-        return updated;
-      });
-    } else {
-      setMainPageUtilization(prev => {
-        const currentPageData = prev[currentPage] || {
-          serviceType: mainServiceType,
-          selectedItems: {},
-          expectedCount: 0
-        };
-        
-        const updated = {
-          ...prev,
-          [currentPage]: {
-            ...currentPageData,
-            ...updates
-          }
-        };
-        
-        // Update global selected items after state change
-        setTimeout(() => updateGlobalSelectedItems(), 0);
-        
-        return updated;
-      });
-    }
-  };
-
-  const updateServiceType = (serviceType: string) => {
-    if (splitPdfs && selectedPdfForTagging) {
-      setSplitPdfs(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          [selectedPdfForTagging]: {
-            ...prev[selectedPdfForTagging],
-            serviceType
-          }
-        };
-      });
-    } else {
-      setMainServiceType(serviceType);
-    }
-    
-    // Also update current page data
-    updateCurrentPageData({ serviceType });
-  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const newFiles: FileData[] = files.map(file => ({
       name: file.name,
       file: file,
-      pages: Math.floor(Math.random() * 10) + 1 // Mock page count
+      pages: Math.floor(Math.random() * 15) + 1 // Mock page count
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
     
-    // Set first file as reference ID if none exists
     if (files.length > 0 && !referenceId) {
       setReferenceId(files[0].name.replace(/\.[^/.]+$/, ""));
     }
-    setTotalPages(newFiles[0]?.pages || 1);
+    if (newFiles[0]) {
+      setTotalPages(newFiles[0].pages);
+    }
     toast({
       title: "Files Uploaded",
       description: `${files.length} file(s) uploaded successfully`,
@@ -425,17 +165,8 @@ const Utilization = () => {
     setTotalPages(selectedFile.pages);
     setCurrentPage(1);
     setSelectedPages([]);
-    setSplitPdfs(null);
-    setSelectedPdfForTagging(null);
-    
-    // Reset form data for new file
-    setMainServiceType('');
-    setMainPageUtilization({});
-    setMainQCVerification({
-      eliminatedDemographics: [],
-      eliminatedFlags: [],
-      qcStatus: ''
-    });
+    setSplitSections([]);
+    setActiveSectionId(null);
   };
 
   const handlePageSelection = (pageNum: number) => {
@@ -446,7 +177,7 @@ const Utilization = () => {
     );
   };
 
-  const handleSplitPdf = () => {
+  const handleSplitSelected = () => {
     if (selectedPages.length === 0) {
       toast({
         title: "No Pages Selected",
@@ -456,433 +187,266 @@ const Utilization = () => {
       return;
     }
 
-    const allPages = Array.from({length: totalPages}, (_, i) => i + 1);
-    const pdf1Pages = selectedPages.sort((a, b) => a - b);
-    const pdf2Pages = allPages.filter(p => !selectedPages.includes(p));
-    
-    const splitData: SplitPdfData = {
-      pdf1: {
-        pages: pdf1Pages,
-        referenceId: referenceId + '_part1',
-        serviceType: '',
-        expectedCount: 0,
-        selectedItems: {},
-        pageUtilization: {},
-        qcVerification: {
-          eliminatedDemographics: [],
-          eliminatedFlags: [],
-          qcStatus: ''
-        }
-      },
-      pdf2: {
-        pages: pdf2Pages,
-        referenceId: referenceId + '_part2',
-        serviceType: '',
-        expectedCount: 0,
-        selectedItems: {},
-        pageUtilization: {},
-        qcVerification: {
-          eliminatedDemographics: [],
-          eliminatedFlags: [],
-          qcStatus: ''
-        }
-      }
+    const newSection: SplitSection = {
+      id: `section_${Date.now()}`,
+      name: `Section ${splitSections.length + 1}`,
+      pages: [...selectedPages].sort((a, b) => a - b),
+      serviceType: '',
+      selectedItems: new Set()
     };
 
-    setSplitPdfs(splitData);
+    setSplitSections(prev => [...prev, newSection]);
     setSelectedPages([]);
-    setSelectedPdfForTagging('pdf1'); // Default to first PDF
-    
-    // Clear main data except shared fields
-    setMainServiceType('');
-    setMainPageUtilization({});
-    setMainQCVerification({
-      eliminatedDemographics: [],
-      eliminatedFlags: [],
-      qcStatus: ''
-    });
+    setActiveSectionId(newSection.id);
     
     toast({
-      title: "PDF Split Successfully",
-      description: `Split into PDF 1 (${pdf1Pages.length} pages) and PDF 2 (${pdf2Pages.length} pages)`,
+      title: "Section Created",
+      description: `New section created with ${selectedPages.length} pages`,
     });
   };
 
-  const handlePdfSelection = (pdfKey: 'pdf1' | 'pdf2') => {
-    if (!splitPdfs) return;
-    
-    setSelectedPdfForTagging(pdfKey);
-    const pdfData = splitPdfs[pdfKey];
-    
-    // Set current page to first page of selected PDF
-    setCurrentPage(pdfData.pages[0]);
-    
-    // Load PDF-specific reference ID
-    setReferenceId(pdfData.referenceId);
-  };
-
-  const handlePageNavigation = (direction: 'prev' | 'next') => {
-    if (splitPdfs && selectedPdfForTagging) {
-      const currentPdf = splitPdfs[selectedPdfForTagging];
-      const currentIndex = currentPdf.pages.indexOf(currentPage);
-      
-      if (direction === 'prev' && currentIndex > 0) {
-        setCurrentPage(currentPdf.pages[currentIndex - 1]);
-      } else if (direction === 'next' && currentIndex < currentPdf.pages.length - 1) {
-        setCurrentPage(currentPdf.pages[currentIndex + 1]);
-      }
-    } else {
-      // Regular navigation for non-split PDFs
-      if (direction === 'prev') {
-        setCurrentPage(Math.max(1, currentPage - 1));
-      } else {
-        setCurrentPage(Math.min(totalPages, currentPage + 1));
-      }
+  const handleLabSelectionComplete = () => {
+    if (selectedLabPartner && (selectedExecutingLabPartner || customExecutingLabPartner)) {
+      setIsLabSelectionComplete(true);
     }
-  };
-
-  const getNavigationLimits = () => {
-    if (splitPdfs && selectedPdfForTagging) {
-      const currentPdf = splitPdfs[selectedPdfForTagging];
-      const currentIndex = currentPdf.pages.indexOf(currentPage);
-      return {
-        isFirst: currentIndex === 0,
-        isLast: currentIndex === currentPdf.pages.length - 1
-      };
-    }
-    
-    return { isFirst: currentPage === 1, isLast: currentPage === totalPages };
-  };
-
-  const handleQualityChange = (quality: string) => {
-    setSelectedQuality(prev => 
-      prev.includes(quality) 
-        ? prev.filter(q => q !== quality)
-        : [...prev, quality]
-    );
-  };
-
-  // Helper function to get all selected items across both PDFs
-  const getAllSelectedItems = () => {
-    const allSelected = new Set<string>();
-    
-    if (splitPdfs) {
-      // Get all selected items from both PDFs
-      Object.values(splitPdfs.pdf1.pageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              allSelected.add(key);
-            }
-          }
-        });
-      });
-      
-      Object.values(splitPdfs.pdf2.pageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              allSelected.add(key);
-            }
-          }
-        });
-      });
-    } else {
-      // Get all selected items from main PDF
-      Object.values(mainPageUtilization).forEach(pageData => {
-        Object.entries(pageData.selectedItems).forEach(([key, selected]) => {
-          if (selected && !key.includes('Comment') && !key.includes('Expected') && !key.endsWith('-')) {
-            // Only count actual utilization items, not category headers
-            const parts = key.split('-');
-            if (parts.length > 1) {
-              allSelected.add(key);
-            }
-          }
-        });
-      });
-    }
-    
-    return allSelected;
-  };
-
-  // Helper function to check if an item is selected anywhere in the current PDF
-  const isItemSelectedInCurrentPdf = (itemKey: string) => {
-    if (splitPdfs && selectedPdfForTagging) {
-      const currentPdf = splitPdfs[selectedPdfForTagging];
-      return Object.values(currentPdf.pageUtilization).some(pageData => 
-        pageData.selectedItems[itemKey]
-      );
-    } else {
-      // For non-split PDFs, check across all pages
-      return Object.values(mainPageUtilization).some(pageData => 
-        pageData.selectedItems[itemKey]
-      );
-    }
-  };
-
-  // Helper function to check if an item is selected in the other PDF (for split PDFs only)
-  const isItemSelectedInOtherPdf = (itemKey: string) => {
-    if (!splitPdfs || !selectedPdfForTagging) return false;
-    
-    const otherPdf = selectedPdfForTagging === 'pdf1' ? 'pdf2' : 'pdf1';
-    const otherPdfData = splitPdfs[otherPdf];
-    
-    return Object.values(otherPdfData.pageUtilization).some(pageData => 
-      pageData.selectedItems[itemKey]
-    );
   };
 
   const handleServiceItemToggle = (category: string, item: string) => {
-    const key = `${category}-${item}`;
-    const currentPageData = getCurrentPageData();
-    const currentSelectedItems = currentPageData?.selectedItems || {};
+    if (!activeSectionId) return;
     
-    // If item is already selected in current PDF, allow toggling it off
-    const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(key);
-    const isCurrentlySelected = currentSelectedItems[key];
-    
-    // Only prevent selection if it's selected in the OTHER PDF (for split PDFs)
-    if (!isCurrentlySelected && splitPdfs && isItemSelectedInOtherPdf(key)) {
-      toast({
-        title: "Item Already Selected",
-        description: `"${item}" is already selected in the other PDF. Each utilization item can only be selected once across both PDFs.`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    const newSelected = !isSelectedInCurrentPdf;
-    const newSelectedItems = {
-      ...currentSelectedItems,
-      [key]: newSelected
-    };
+    const activeSection = splitSections.find(s => s.id === activeSectionId);
+    if (!activeSection) return;
 
-    // Auto-select parent category if any child is selected
-    const currentServiceType = getCurrentServiceType();
-    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
-    const categoryItems = currentServices[category] || [];
-    const hasAnySelected = categoryItems.some(childItem => newSelectedItems[`${category}-${childItem}`]);
+    const itemKey = `${category}-${item}`;
+    const newSelectedItems = new Set(activeSection.selectedItems);
     
-    // Update parent category selection based on children
-    if (hasAnySelected && !newSelectedItems[category]) {
-      newSelectedItems[category] = true;
-    } else if (!hasAnySelected && newSelectedItems[category]) {
-      newSelectedItems[category] = false;
-    }
-    
-    updateCurrentPageData({ 
-      selectedItems: newSelectedItems
-    });
-  };
-
-  const handleCategoryToggle = (category: string) => {
-    const currentPageData = getCurrentPageData();
-    const currentSelectedItems = currentPageData?.selectedItems || {};
-    const currentServiceType = getCurrentServiceType();
-    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
-    const categoryItems = currentServices[category] || [];
-    const allSelected = categoryItems.every(item => {
-      const itemKey = `${category}-${item}`;
-      return currentSelectedItems[itemKey] || isItemSelectedInCurrentPdf(itemKey);
-    });
-    
-    // Check if any items in this category are selected in the OTHER PDF (for split PDFs)
-    if (!allSelected && splitPdfs) {
-      const conflictingItems = categoryItems.filter(item => 
-        isItemSelectedInOtherPdf(`${category}-${item}`) && !currentSelectedItems[`${category}-${item}`]
-      );
-      
-      if (conflictingItems.length > 0) {
-        toast({
-          title: "Items Already Selected in Other PDF",
-          description: `Some items in "${category}" are already selected in the other PDF: ${conflictingItems.join(', ')}`,
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
-    const newSelectedItems = { ...currentSelectedItems };
-    
-    // Toggle category header
-    newSelectedItems[category] = !allSelected;
-    
-    // Toggle all items in category
-    categoryItems.forEach(item => {
-      const key = `${category}-${item}`;
-      // Only toggle if not selected in other PDF, but allow if already selected in current PDF
-      if (!isItemSelectedInOtherPdf(key)) {
-        newSelectedItems[key] = !allSelected;
-      }
-    });
-    
-    updateCurrentPageData({ 
-      selectedItems: newSelectedItems
-    });
-  };
-
-  const handleEliminateItem = (item: string, type: 'demographics' | 'flags') => {
-    const currentQC = getCurrentQCVerification();
-    
-    if (type === 'demographics') {
-      const newEliminatedDemographics = currentQC.eliminatedDemographics.includes(item) 
-        ? currentQC.eliminatedDemographics.filter(i => i !== item)
-        : [...currentQC.eliminatedDemographics, item];
-      
-      updateCurrentQCVerification({ eliminatedDemographics: newEliminatedDemographics });
+    if (newSelectedItems.has(itemKey)) {
+      newSelectedItems.delete(itemKey);
     } else {
-      const newEliminatedFlags = currentQC.eliminatedFlags.includes(item)
-        ? currentQC.eliminatedFlags.filter(i => i !== item)
-        : [...currentQC.eliminatedFlags, item];
-      
-      updateCurrentQCVerification({ eliminatedFlags: newEliminatedFlags });
+      newSelectedItems.add(itemKey);
     }
+
+    setSplitSections(prev => prev.map(section => 
+      section.id === activeSectionId 
+        ? { ...section, selectedItems: newSelectedItems }
+        : section
+    ));
   };
 
-  const handleDelete = () => {
-    setUploadedFiles([]);
-    setSelectedFileIndex(0);
-    setReferenceId('');
-    setSelectedQuality([]);
-    setMainServiceType('');
-    setMainPageUtilization({});
-    setSplitPdfs(null);
-    setSelectedPages([]);
-    setSelectedLabPartner('');
-    setCustomLabPartner('');
-    setMainQCVerification({
-      eliminatedDemographics: [],
-      eliminatedFlags: [],
-      qcStatus: ''
-    });
-    toast({
-      title: "Data Cleared",
-      description: "All data has been cleared",
-    });
-  };
-
-  const filteredServices = () => {
-    const currentServiceType = getCurrentServiceType();
-    
-    if (!currentServiceType) {
-      return {};
-    }
-    
-    const currentServices = currentServiceType === 'Pathology' ? pathologyServices : otherServices;
-    
-    if (!searchTerm) return currentServices;
-    
-    const filtered: Record<string, string[]> = {};
-    Object.entries(currentServices).forEach(([category, items]) => {
-      const filteredItems = items.filter(item => 
-        item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        category.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      if (filteredItems.length > 0) {
-        filtered[category] = filteredItems;
+  const handleZoom = (direction: 'in' | 'out') => {
+    setZoomLevel(prev => {
+      if (direction === 'in') {
+        return Math.min(prev + 25, 200);
+      } else {
+        return Math.max(prev - 25, 50);
       }
     });
-    return filtered;
   };
 
-  const renderServiceItems = () => {
-    const currentServiceType = getCurrentServiceType();
-    const currentPageData = getCurrentPageData();
-    
-    // For Consult, show a message that no utilization items are needed
-    if (currentServiceType === 'Consult') {
-      return (
-        <div className="text-center py-8 text-gray-500">
-          <p>No utilization items required for Consult service type.</p>
-        </div>
-      );
-    }
-
-    // If no service type is selected, show a message
-    if (!currentServiceType) {
-      return (
-        <div className="text-center py-8 text-gray-500">
-          <p>Please select a service type to view utilization items.</p>
-        </div>
-      );
-    }
-
-    const services = filteredServices();
-    
-    if (!services || Object.keys(services).length === 0) {
-      return (
-        <div className="text-center py-8 text-gray-500">
-          <p>No services found for the selected type.</p>
-        </div>
-      );
-    }
-    
-    return Object.entries(services).map(([category, items]) => {
-      const categoryItemIds = items.map(item => `${category}-${item}`);
-      const selectedItems = currentPageData?.selectedItems || {};
-      
-      // Count items selected on current page OR selected anywhere in current PDF
-      const selectedCount = categoryItemIds.filter(id => 
-        selectedItems[id] || isItemSelectedInCurrentPdf(id)
-      ).length;
-      const hasAnySelected = selectedCount > 0;
-
-      return (
-        <div key={category} className="mb-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Checkbox
-              checked={hasAnySelected}
-              onCheckedChange={() => handleCategoryToggle(category)}
-            />
-            <Label className="font-semibold cursor-pointer" onClick={() => handleCategoryToggle(category)}>
-              {category} ({selectedCount}/{categoryItemIds.length})
-            </Label>
-          </div>
-          <div className="ml-6 space-y-1">
-            {items.map(item => {
-              const itemKey = `${category}-${item}`;
-              const isSelectedOnCurrentPage = selectedItems[itemKey] || false;
-              const isSelectedInCurrentPdf = isItemSelectedInCurrentPdf(itemKey);
-              const isSelectedInOtherPdf = isItemSelectedInOtherPdf(itemKey);
-              
-              // Show as checked if selected anywhere in current PDF
-              const isChecked = isSelectedOnCurrentPage || isSelectedInCurrentPdf;
-              // Disable if selected in other PDF but not in current PDF
-              const isDisabled = isSelectedInOtherPdf && !isSelectedInCurrentPdf;
-              
-              return (
-                <div key={item} className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={isChecked}
-                    disabled={isDisabled}
-                    onCheckedChange={() => handleServiceItemToggle(category, item)}
-                  />
-                  <Label 
-                    className={`text-sm cursor-pointer ${
-                      isDisabled ? 'text-gray-400 line-through' : ''
-                    }`} 
-                    onClick={() => !isDisabled && handleServiceItemToggle(category, item)}
-                  >
-                    {item}
-                    {isDisabled && (
-                      <span className="ml-2 text-xs text-red-500">(Selected in other PDF)</span>
-                    )}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
+  const handleDemographicToggle = (demographic: string) => {
+    setSelectedDemographics(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(demographic)) {
+        newSet.delete(demographic);
+      } else {
+        newSet.add(demographic);
+      }
+      return newSet;
     });
   };
 
-  const { isFirst, isLast } = getNavigationLimits();
-  const currentQC = getCurrentQCVerification();
+  const handleAddCustomDemographic = (value: string) => {
+    if (value.trim()) {
+      setCustomDemographics(prev => [...prev, value.trim()]);
+      setSelectedDemographics(prev => new Set([...prev, value.trim()]));
+    }
+  };
+
+  const handleQCFlagToggle = (flag: string) => {
+    setSelectedQCFlags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(flag)) {
+        newSet.delete(flag);
+      } else {
+        newSet.add(flag);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddCustomQCFlag = (value: string) => {
+    if (value.trim()) {
+      setCustomQCFlags(prev => [...prev, value.trim()]);
+      setSelectedQCFlags(prev => new Set([...prev, value.trim()]));
+    }
+  };
+
+  const renderServiceChips = () => {
+    if (!activeSectionId) return null;
+    
+    const activeSection = splitSections.find(s => s.id === activeSectionId);
+    if (!activeSection || !activeSection.serviceType) return null;
+
+    const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
+    
+    return (
+      <Accordion type="single" collapsible className="w-full">
+        {Object.entries(currentServices).map(([category, items]) => (
+          <AccordionItem key={category} value={category}>
+            <AccordionTrigger className="text-left">
+              <div className="flex items-center justify-between w-full mr-4">
+                <span>{category}</span>
+                <Badge variant="secondary">
+                  {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length}/{items.length}
+                </Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea className="h-32">
+                <div className="flex flex-wrap gap-2 p-2">
+                  {items.map(item => {
+                    const itemKey = `${category}-${item}`;
+                    const isSelected = activeSection.selectedItems.has(itemKey);
+                    return (
+                      <Badge
+                        key={item}
+                        variant={isSelected ? "default" : "outline"}
+                        className="cursor-pointer hover:bg-primary/80 transition-colors"
+                        onClick={() => handleServiceItemToggle(category, item)}
+                      >
+                        {item}
+                        {isSelected && <X className="h-3 w-3 ml-1" />}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 p-2 border-t">
+                  <div className="text-xs text-gray-500 mb-1">Selected items:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
+                      <Badge key={item} variant="secondary" className="text-xs">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    );
+  };
+
+  const renderDemographicsChips = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {demographicOptions.map(demo => (
+            <Badge
+              key={demo}
+              variant={selectedDemographics.has(demo) ? "default" : "outline"}
+              className="cursor-pointer hover:bg-primary/80 transition-colors"
+              onClick={() => handleDemographicToggle(demo)}
+            >
+              {demo}
+              {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
+            </Badge>
+          ))}
+          {customDemographics.map(demo => (
+            <Badge
+              key={demo}
+              variant="default"
+              className="cursor-pointer"
+              onClick={() => handleDemographicToggle(demo)}
+            >
+              {demo}
+              <X className="h-3 w-3 ml-1" />
+            </Badge>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom demographic..."
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddCustomDemographic(e.currentTarget.value);
+                e.currentTarget.value = '';
+              }
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const input = document.querySelector('input[placeholder="Add custom demographic..."]') as HTMLInputElement;
+              if (input) {
+                handleAddCustomDemographic(input.value);
+                input.value = '';
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderQCFlagsChips = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {qcFlagOptions.map(flag => (
+            <Badge
+              key={flag}
+              variant={selectedQCFlags.has(flag) ? "destructive" : "outline"}
+              className="cursor-pointer hover:bg-destructive/80 transition-colors"
+              onClick={() => handleQCFlagToggle(flag)}
+            >
+              {flag}
+              {selectedQCFlags.has(flag) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
+            </Badge>
+          ))}
+          {customQCFlags.map(flag => (
+            <Badge
+              key={flag}
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={() => handleQCFlagToggle(flag)}
+            >
+              {flag}
+              <X className="h-3 w-3 ml-1" />
+            </Badge>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom QC flag..."
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleAddCustomQCFlag(e.currentTarget.value);
+                e.currentTarget.value = '';
+              }
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const input = document.querySelector('input[placeholder="Add custom QC flag..."]') as HTMLInputElement;
+              if (input) {
+                handleAddCustomQCFlag(input.value);
+                input.value = '';
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -891,14 +455,14 @@ const Utilization = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Utilization/Tagging Phase (Pre-Digitization)</h1>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-          {/* Left Side - PDF Upload and Preview */}
-          <div className="col-span-1">
+        <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+          {/* Left Side - PDF Upload and Preview (Enhanced) */}
+          <div className="col-span-8">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  PDF Upload & Preview
+                  Enhanced PDF Preview & Management
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -916,18 +480,18 @@ const Utilization = () => {
                     <div className="text-center">
                       <Upload className="mx-auto h-12 w-12 text-gray-400" />
                       <p className="mt-2 text-sm text-gray-600">
-                        Click to upload PDFs or drag and drop
+                        Upload PDF Reports (Pathology, Radiology, Mixed Services)
                       </p>
                       <p className="text-xs text-gray-500">Supports bulk upload</p>
                     </div>
                   </label>
                 </div>
 
-                {/* Bulk Upload Reference ID Selection */}
+                {/* File Selection */}
                 {uploadedFiles.length > 1 && (
                   <div>
-                    <Label className="text-sm font-medium mb-2 block">Select Reference ID to Process:</Label>
-                    <ScrollArea className="h-32">
+                    <Label className="text-sm font-medium mb-2 block">Select File to Process:</Label>
+                    <ScrollArea className="h-24">
                       <div className="space-y-2">
                         {uploadedFiles.map((file, index) => (
                           <Button
@@ -946,43 +510,28 @@ const Utilization = () => {
                   </div>
                 )}
 
-                {/* Service Type Selection for Entire PDF/Split PDF */}
+                {/* Enhanced PDF Preview */}
                 {uploadedFiles.length > 0 && (
-                  <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                    <Label className="text-base font-medium mb-2 block">
-                      Service Type {splitPdfs && selectedPdfForTagging ? `for ${selectedPdfForTagging.toUpperCase()}` : '(Entire PDF)'} *
-                    </Label>
-                    <div className="flex gap-2">
-                      {serviceTypeOptions.map(type => {
-                        const currentServiceType = getCurrentServiceType();
-                        return (
-                          <Button
-                            key={type}
-                            variant={currentServiceType === type ? "default" : "outline"}
-                            onClick={() => updateServiceType(type)}
-                            size="sm"
-                          >
-                            {type}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    {!getCurrentServiceType() && (
-                      <p className="text-sm text-gray-600 mt-1">Please select a service type</p>
-                    )}
-                  </div>
-                )}
-
-                {/* PDF Preview and Controls */}
-                {uploadedFiles.length > 0 && (
-                  <div className="border rounded-lg p-4 flex-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-medium">PDF Preview</h3>
+                  <div className="border rounded-lg flex-1 flex flex-col">
+                    {/* PDF Controls */}
+                    <div className="flex items-center justify-between p-4 border-b bg-gray-50">
                       <div className="flex items-center gap-2">
-                        {!splitPdfs && (
-                          <Button variant="outline" size="sm" onClick={handleSplitPdf} disabled={selectedPages.length === 0}>
+                        <Button variant="outline" size="sm" onClick={() => handleZoom('out')}>
+                          <ZoomOut className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium">{zoomLevel}%</span>
+                        <Button variant="outline" size="sm" onClick={() => handleZoom('in')}>
+                          <ZoomIn className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Maximize className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedPages.length > 0 && (
+                          <Button variant="outline" size="sm" onClick={handleSplitSelected}>
                             <Split className="h-4 w-4 mr-1" />
-                            Split Selected
+                            Split Selected ({selectedPages.length})
                           </Button>
                         )}
                         <Button variant="outline" size="sm">
@@ -992,120 +541,108 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Page Selection for Splitting - Only show if not split yet */}
-                    {!splitPdfs && (
-                      <div className="mb-4">
-                        <Label className="text-sm font-medium mb-2 block">Select Pages to Split (Optional):</Label>
-                        <ScrollArea className="h-48">
-                          <div className="grid grid-cols-3 gap-2 p-2">
-                            {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
-                              <div
-                                key={pageNum}
-                                className={`relative cursor-pointer border-2 rounded-lg p-2 transition-all ${
-                                  selectedPages.includes(pageNum) 
-                                    ? "border-blue-500 bg-blue-50" 
-                                    : "border-gray-200 hover:border-gray-300"
-                                }`}
-                                onClick={() => handlePageSelection(pageNum)}
-                              >
-                                <div className="bg-white h-20 rounded border flex flex-col items-center justify-center p-2">
-                                  <FileText className="h-6 w-6 text-gray-400 mb-1" />
-                                  <div className="text-xs text-gray-500">{pageNum}</div>
-                                </div>
-                                {selectedPages.includes(pageNum) && (
-                                  <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs">
-                                    ✓
-                                  </div>
-                                )}
+                    {/* Page Grid Selection */}
+                    <div className="p-4 flex-1">
+                      <Label className="text-sm font-medium mb-3 block">
+                        Select Pages to Group into Sections:
+                      </Label>
+                      <ScrollArea className="h-64">
+                        <div className="grid grid-cols-4 gap-3">
+                          {Array.from({length: totalPages}, (_, i) => i + 1).map(pageNum => (
+                            <div
+                              key={pageNum}
+                              className={`relative cursor-pointer border-2 rounded-lg p-3 transition-all ${
+                                selectedPages.includes(pageNum) 
+                                  ? "border-blue-500 bg-blue-50" 
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                              onClick={() => handlePageSelection(pageNum)}
+                            >
+                              <div className="bg-white h-24 rounded border flex flex-col items-center justify-center shadow-sm">
+                                <FileText className="h-8 w-8 text-gray-400 mb-1" />
+                                <div className="text-xs text-gray-500 font-medium">Page {pageNum}</div>
                               </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    )}
+                              {selectedPages.includes(pageNum) && (
+                                <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
 
                     {/* Current Page Preview */}
-                    <div className="bg-gray-100 h-48 rounded flex items-center justify-center mb-4 border">
-                      <div className="text-center bg-white p-8 rounded shadow-sm border">
-                        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <span className="text-gray-500 text-lg font-medium">
-                          Page {currentPage}
-                        </span>
-                        <div className="mt-2 text-xs text-blue-600 font-medium">
-                          Page-wise Tagging Enabled
+                    <div className="p-4 border-t">
+                      <div 
+                        className="bg-white rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center shadow-inner"
+                        style={{ height: `${200 * (zoomLevel / 100)}px` }}
+                      >
+                        <div className="text-center">
+                          <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                          <span className="text-gray-500 text-xl font-medium">
+                            Page {currentPage} Preview
+                          </span>
+                          <div className="mt-2 text-sm text-blue-600 font-medium">
+                            Zoom: {zoomLevel}%
+                          </div>
                         </div>
-                        <div className="mt-4 space-y-2">
-                          <div className="w-32 h-2 bg-gray-200 rounded mx-auto"></div>
-                          <div className="w-24 h-2 bg-gray-200 rounded mx-auto"></div>
-                          <div className="w-28 h-2 bg-gray-200 rounded mx-auto"></div>
-                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageNavigation('prev')}
-                        disabled={isFirst}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm">
-                        Page {currentPage} of {splitPdfs && selectedPdfForTagging ? splitPdfs[selectedPdfForTagging].pages.length : totalPages}
-                        {splitPdfs && selectedPdfForTagging && (
-                          <span className="text-xs text-gray-500 block">
-                            ({splitPdfs[selectedPdfForTagging].pages.join(', ')})
-                          </span>
-                        )}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageNavigation('next')}
-                        disabled={isLast}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Split PDFs Preview and Selection */}
-                    {splitPdfs && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-medium mb-2">Select PDF to tag:</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div 
-                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
-                              selectedPdfForTagging === 'pdf1' 
-                                ? 'border-blue-500 bg-blue-100' 
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                            onClick={() => handlePdfSelection('pdf1')}
-                          >
-                            <Label className="text-sm font-medium cursor-pointer">PDF 1 (Pages: {splitPdfs.pdf1.pages.join(', ')})</Label>
-                            <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
-                              <FileText className="h-6 w-6 text-blue-500" />
+                    {/* Split Sections Preview */}
+                    {splitSections.length > 0 && (
+                      <div className="p-4 border-t bg-gray-50">
+                        <Label className="text-sm font-medium mb-3 block">Created Sections:</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          {splitSections.map(section => (
+                            <div
+                              key={section.id}
+                              className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                activeSectionId === section.id
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                              }`}
+                              onClick={() => setActiveSectionId(section.id)}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="font-medium cursor-pointer">{section.name}</Label>
+                                {activeSectionId === section.id && (
+                                  <Badge variant="default" className="text-xs">Active</Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Pages: {section.pages.join(', ')}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Service: {section.serviceType || 'Not selected'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Items: {section.selectedItems.size}
+                              </div>
                             </div>
-                            {selectedPdfForTagging === 'pdf1' && (
-                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
-                            )}
-                          </div>
-                          <div 
-                            className={`cursor-pointer p-3 rounded border-2 transition-all ${
-                              selectedPdfForTagging === 'pdf2' 
-                                ? 'border-blue-500 bg-blue-100' 
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                            onClick={() => handlePdfSelection('pdf2')}
-                          >
-                            <Label className="text-sm font-medium cursor-pointer">PDF 2 (Pages: {splitPdfs.pdf2.pages.join(', ')})</Label>
-                            <div className="bg-white h-16 rounded border flex items-center justify-center mt-2">
-                              <FileText className="h-6 w-6 text-green-500" />
-                            </div>
-                            {selectedPdfForTagging === 'pdf2' && (
-                              <div className="text-xs text-blue-600 mt-1 font-medium">Selected</div>
-                            )}
-                          </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1113,7 +650,11 @@ const Utilization = () => {
                 )}
 
                 {/* Delete Button */}
-                <Button variant="destructive" onClick={handleDelete} className="w-full">
+                <Button variant="destructive" onClick={() => {
+                  setUploadedFiles([]);
+                  setSplitSections([]);
+                  setActiveSectionId(null);
+                }} className="w-full">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear All Data
                 </Button>
@@ -1121,273 +662,226 @@ const Utilization = () => {
             </Card>
           </div>
 
-          {/* Right Side - Form Fields and Utilization */}
-          <div className="col-span-1 flex flex-col gap-4">
-            {/* Top Right - Form Fields */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Report Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Reference ID */}
+          {/* Right Side - Enhanced Form and Tagging */}
+          <div className="col-span-4 flex flex-col gap-4">
+            {/* Lab Partner Selection */}
+            {!isLabSelectionComplete && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lab Partner Selection</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="reference-id">Reference ID</Label>
-                    <Input
-                      id="reference-id"
-                      value={referenceId}
-                      onChange={(e) => setReferenceId(e.target.value)}
-                      placeholder="Auto-filled from PDF name"
-                    />
+                    <Label>Lab Partner *</Label>
+                    <Select value={selectedLabPartner} onValueChange={setSelectedLabPartner}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select lab partner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {labPartners.map(partner => (
+                          <SelectItem key={partner} value={partner}>{partner}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {/* Expected Count - Now shows total for PDF */}
                   <div>
-                    <Label htmlFor="expected-count">
-                      Expected Count 
-                      {splitPdfs && selectedPdfForTagging ? ` (${selectedPdfForTagging.toUpperCase()} Total)` : ' (Total)'}
-                    </Label>
-                    <Input
-                      id="expected-count"
-                      type="number"
-                      value={getTotalExpectedCount().toString()}
-                      readOnly
-                      className="bg-gray-50"
-                      placeholder="Auto-calculated from selections"
-                    />
+                    <Label>Executing Lab Partner *</Label>
+                    <Select value={selectedExecutingLabPartner} onValueChange={setSelectedExecutingLabPartner}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select executing lab partner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {executingLabPartners.map(partner => (
+                          <SelectItem key={partner} value={partner}>{partner}</SelectItem>
+                        ))}
+                        <SelectItem value="custom">Add New Partner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {selectedExecutingLabPartner === 'custom' && (
+                      <Input
+                        className="mt-2"
+                        placeholder="Enter new executing lab partner name"
+                        value={customExecutingLabPartner}
+                        onChange={(e) => setCustomExecutingLabPartner(e.target.value)}
+                      />
+                    )}
                   </div>
-                </div>
 
-                {/* Report Quality */}
-                <div>
-                  <Label className="text-base font-medium">Report Quality *</Label>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {qualityOptions.map(quality => (
-                      <Button
-                        key={quality}
-                        variant={selectedQuality.includes(quality) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleQualityChange(quality)}
-                        className="justify-start"
-                      >
-                        {quality}
-                      </Button>
-                    ))}
-                  </div>
-                  {selectedQuality.length === 0 && (
-                    <p className="text-sm text-gray-600 mt-1">Please select at least one quality option</p>
-                  )}
-                </div>
-
-                {/* Lab Partner */}
-                <div>
-                  <Label>Executing Lab Partner *</Label>
-                  <Select 
-                    value={selectedLabPartner} 
-                    onValueChange={(value) => setSelectedLabPartner(value)}
+                  <Button 
+                    onClick={handleLabSelectionComplete}
+                    disabled={!selectedLabPartner || (!selectedExecutingLabPartner && !customExecutingLabPartner)}
+                    className="w-full"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select lab partner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {labPartners.map(partner => (
-                        <SelectItem key={partner} value={partner}>{partner}</SelectItem>
-                      ))}
-                      <SelectItem value="custom">Add New Partner</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {selectedLabPartner === 'custom' && (
-                    <Input
-                      className="mt-2"
-                      placeholder="Enter new lab partner name"
-                      value={customLabPartner}
-                      onChange={(e) => setCustomLabPartner(e.target.value)}
-                    />
-                  )}
-                  {!selectedLabPartner && (
-                    <p className="text-sm text-gray-600 mt-1">Please select a lab partner</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    Continue to Utilization Tagging
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Bottom Right - Utilization & QC */}
-            <Card className="flex-1">
-              <CardHeader>
-                <CardTitle>
-                  Utilization & QC Verification
-                  {splitPdfs && selectedPdfForTagging && (
-                    <span className="text-sm font-normal text-blue-600 block">
-                      {selectedPdfForTagging.toUpperCase()}
-                    </span>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-full">
-                <Tabs defaultValue="utilization" className="h-full flex flex-col">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="utilization" disabled={!isMandatoryFieldsFilled()}>
-                      Utilization Tagging * (Page {currentPage})
-                      {!isMandatoryFieldsFilled() && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
-                    </TabsTrigger>
-                    <TabsTrigger value="qc" disabled={!isMandatoryFieldsFilled() || !hasUtilizationSelected()}>
-                      QC Verification
-                      {(!isMandatoryFieldsFilled() || !hasUtilizationSelected()) && <span className="ml-2 text-xs text-gray-500">(Pending)</span>}
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="utilization" className="flex-1 h-0">
-                    {!isMandatoryFieldsFilled() ? (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
-                          <p className="text-sm text-gray-400">Please fill all mandatory fields to continue</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 h-full flex flex-col">
-                        {/* Search within Utilization Items - Only show for non-Consult types */}
-                        {getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                              placeholder="Search utilization items..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className="pl-10"
-                            />
-                          </div>
-                        )}
-
-                        <ScrollArea className="flex-1">
-                          <div>
-                            <h3 className="font-medium mb-3">
-                              Utilization ({getCurrentServiceType() || 'Select Service Type'}) *
-                              <span className="text-sm font-normal text-blue-600 block">
-                                Page {currentPage}
-                              </span>
-                            </h3>
-                            {!hasUtilizationSelected() && getCurrentServiceType() && getCurrentServiceType() !== 'Consult' && (
-                              <p className="text-sm text-red-600 mb-3">Please select at least one utilization item for this page</p>
+            {/* Form Fields - Collapsed when lab selection complete */}
+            {isLabSelectionComplete && (
+              <Card className="transition-all duration-300">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Report Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="reference-id" className="text-sm">Reference ID</Label>
+                      <Input
+                        id="reference-id"
+                        value={referenceId}
+                        onChange={(e) => setReferenceId(e.target.value)}
+                        placeholder="Auto-filled"
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Quality</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {qualityOptions.slice(0, 2).map(quality => (
+                          <Badge
+                            key={quality}
+                            variant={selectedQuality.includes(quality) ? "default" : "outline"}
+                            className="text-xs cursor-pointer"
+                            onClick={() => setSelectedQuality(prev => 
+                              prev.includes(quality) 
+                                ? prev.filter(q => q !== quality)
+                                : [...prev, quality]
                             )}
-                            {renderServiceItems()}
+                          >
+                            {quality}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Service Type and Utilization - Only show when lab selection is complete */}
+            {isLabSelectionComplete && activeSectionId && (
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    Enhanced Utilization Tagging
+                    <Badge variant="outline" className="text-xs">
+                      {splitSections.find(s => s.id === activeSectionId)?.name}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-full">
+                  <Tabs defaultValue="service" className="h-full flex flex-col">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="service">Service Type</TabsTrigger>
+                      <TabsTrigger value="demographics">Demographics</TabsTrigger>
+                      <TabsTrigger value="qc">QC & Remarks</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="service" className="flex-1 h-0">
+                      <div className="space-y-4 h-full flex flex-col">
+                        {/* Service Type Selection */}
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Service Type *</Label>
+                          <div className="flex gap-2">
+                            {serviceTypeOptions.map(type => {
+                              const activeSection = splitSections.find(s => s.id === activeSectionId);
+                              return (
+                                <Button
+                                  key={type}
+                                  variant={activeSection?.serviceType === type ? "default" : "outline"}
+                                  onClick={() => {
+                                    setSplitSections(prev => prev.map(section => 
+                                      section.id === activeSectionId 
+                                        ? { ...section, serviceType: type }
+                                        : section
+                                    ));
+                                  }}
+                                  size="sm"
+                                >
+                                  {type}
+                                </Button>
+                              );
+                            })}
                           </div>
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                          <Input
+                            placeholder="Search utilization items..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+
+                        {/* Enhanced Chip-based Utilization */}
+                        <ScrollArea className="flex-1">
+                          {renderServiceChips()}
                         </ScrollArea>
                       </div>
-                    )}
-                  </TabsContent>
+                    </TabsContent>
 
-                  <TabsContent value="qc" className="flex-1 h-0">
-                    {!isMandatoryFieldsFilled() || !hasUtilizationSelected() ? (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <div className="text-lg font-medium text-gray-500 mb-2">Pending</div>
-                          <p className="text-sm text-gray-400">
-                            {!isMandatoryFieldsFilled() && "Please fill all mandatory fields to continue"}
-                            {isMandatoryFieldsFilled() && !hasUtilizationSelected() && "Please select at least one utilization item"}
-                          </p>
+                    <TabsContent value="demographics" className="flex-1 h-0">
+                      <ScrollArea className="h-full">
+                        <div className="space-y-4">
+                          <Label className="text-base font-medium">Demographics Verification</Label>
+                          {renderDemographicsChips()}
                         </div>
-                      </div>
-                    ) : (
+                      </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="qc" className="flex-1 h-0">
                       <ScrollArea className="h-full">
                         <div className="space-y-6">
-                          {/* QC Step: Verify Demographics */}
                           <div>
-                            <Label className="text-base font-medium mb-2 block">Verify Demographics *</Label>
-                            {!isDemographicsStarted() && (
-                              <Label className="text-sm text-gray-600 mb-3 block">Click items to eliminate from verification</Label>
-                            )}
-                            <div className="space-y-2">
-                              {qcDemographicItems.map(item => (
-                                <Button
-                                  key={item}
-                                  variant={currentQC.eliminatedDemographics.includes(item) ? "destructive" : "outline"}
-                                  size="sm"
-                                  onClick={() => handleEliminateItem(item, 'demographics')}
-                                  className="mr-2 mb-2"
-                                >
-                                  {currentQC.eliminatedDemographics.includes(item) && <X className="h-4 w-4 mr-1" />}
-                                  {item}
-                                </Button>
-                              ))}
-                            </div>
+                            <Label className="text-base font-medium mb-3 block">QC Flags</Label>
+                            {renderQCFlagsChips()}
                           </div>
-
-                          {/* QC Flags */}
+                          
                           <div>
-                            <Label className="text-base font-medium mb-2 block">QC Flags *</Label>
-                            <div className="space-y-2">
-                              {qcFlagItems.map(item => (
-                                <Button
-                                  key={item}
-                                  variant={currentQC.eliminatedFlags.includes(item) ? "destructive" : "outline"}
-                                  size="sm"
-                                  onClick={() => handleEliminateItem(item, 'flags')}
-                                  className="mr-2 mb-2"
-                                >
-                                  {currentQC.eliminatedFlags.includes(item) && <X className="h-4 w-4 mr-1" />}
-                                  {item}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* QC Tracker Status */}
-                          <div>
-                            <Label className="text-base font-medium mb-2 block">QC Status *</Label>
-                            <Select 
-                              value={currentQC.qcStatus} 
-                              onValueChange={(value) => updateCurrentQCVerification({ qcStatus: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="passed">Passed</SelectItem>
-                                <SelectItem value="failed">Failed</SelectItem>
-                                <SelectItem value="pending">Pending Review</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* QC Summary */}
-                          <div>
-                            <Label className="text-base font-medium mb-2 block">QC Summary</Label>
-                            <div className="space-y-2">
-                              <div className="text-sm">
-                                <span className="font-medium">Demographics Verified:</span> {qcDemographicItems.length - currentQC.eliminatedDemographics.length}/{qcDemographicItems.length}
-                              </div>
-                              <div className="text-sm">
-                                <span className="font-medium">Flags Raised:</span> {currentQC.eliminatedFlags.length}
-                              </div>
-                            </div>
+                            <Label className="text-base font-medium mb-2 block">Remarks & Notes</Label>
+                            <Textarea
+                              placeholder="Enter system notes or operational details..."
+                              value={remarks}
+                              onChange={(e) => setRemarks(e.target.value)}
+                              className="min-h-[100px]"
+                            />
                           </div>
                         </div>
                       </ScrollArea>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            )}
 
-                {/* Auto-Save Indicator */}
-                <div className="pt-4 border-t mt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Auto-save enabled</span>
-                    <Button 
-                      onClick={() => {
-                        toast({
-                          title: "Data Saved",
-                          description: "All data has been saved successfully",
-                        });
-                      }}
-                    >
-                      Save Manually
-                    </Button>
+            {/* No Active Section Message */}
+            {isLabSelectionComplete && !activeSectionId && splitSections.length === 0 && (
+              <Card className="flex-1">
+                <CardContent className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <Split className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Upload a PDF and create sections to begin tagging</p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
+
+            {isLabSelectionComplete && splitSections.length > 0 && !activeSectionId && (
+              <Card className="flex-1">
+                <CardContent className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-500">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Select a section from the left panel to begin tagging</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
