@@ -292,51 +292,65 @@ const Utilization = () => {
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     
     return (
-      <Accordion type="single" collapsible className="w-full">
-        {Object.entries(currentServices).map(([category, items]) => (
-          <AccordionItem key={category} value={category}>
-            <AccordionTrigger className="text-left">
-              <div className="flex items-center justify-between w-full mr-4">
-                <span>{category}</span>
-                <Badge variant="secondary">
-                  {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length}/{items.length}
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ScrollArea className="h-32">
-                <div className="flex flex-wrap gap-2 p-2">
-                  {items.map(item => {
-                    const itemKey = `${category}-${item}`;
-                    const isSelected = activeSection.selectedItems.has(itemKey);
-                    return (
-                      <Badge
-                        key={item}
-                        variant={isSelected ? "default" : "outline"}
-                        className="cursor-pointer hover:bg-primary/80 transition-colors"
-                        onClick={() => handleServiceItemToggle(category, item)}
-                      >
-                        {item}
-                        {isSelected && <X className="h-3 w-3 ml-1" />}
-                      </Badge>
-                    );
-                  })}
+      <div className="space-y-4">
+        {/* Expected Count Display */}
+        {activeSection.selectedItems.size > 0 && (
+          <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-md">
+            <Label className="text-base font-semibold text-blue-600 flex items-center gap-2">
+              Expected Count (Total): {activeSection.selectedItems.size}
+              <Badge variant="default" className="bg-blue-600">
+                {activeSection.selectedItems.size} items selected
+              </Badge>
+            </Label>
+          </div>
+        )}
+
+        <Accordion type="single" collapsible className="w-full">
+          {Object.entries(currentServices).map(([category, items]) => (
+            <AccordionItem key={category} value={category}>
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center justify-between w-full mr-4">
+                  <span>{category}</span>
+                  <Badge variant="secondary">
+                    {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length}/{items.length}
+                  </Badge>
                 </div>
-                <div className="mt-2 p-2 border-t">
-                  <div className="text-xs text-gray-500 mb-1">Selected items:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
-                      <Badge key={item} variant="secondary" className="text-xs">
-                        {item}
-                      </Badge>
-                    ))}
+              </AccordionTrigger>
+              <AccordionContent>
+                <ScrollArea className="h-32">
+                  <div className="flex flex-wrap gap-2 p-2">
+                    {items.map(item => {
+                      const itemKey = `${category}-${item}`;
+                      const isSelected = activeSection.selectedItems.has(itemKey);
+                      return (
+                        <Badge
+                          key={item}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer hover:bg-primary/80 transition-colors"
+                          onClick={() => handleServiceItemToggle(category, item)}
+                        >
+                          {item}
+                          {isSelected && <X className="h-3 w-3 ml-1" />}
+                        </Badge>
+                      );
+                    })}
                   </div>
-                </div>
-              </ScrollArea>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+                  <div className="mt-2 p-2 border-t">
+                    <div className="text-xs text-gray-500 mb-1">Selected items:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
+                        <Badge key={item} variant="secondary" className="text-xs">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </ScrollArea>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
     );
   };
 
@@ -643,6 +657,11 @@ const Utilization = () => {
                               <div className="text-xs text-gray-500">
                                 Items: {section.selectedItems.size}
                               </div>
+                              {section.selectedItems.size > 0 && (
+                                <div className="text-xs font-medium text-blue-600 mt-1">
+                                  Expected Count: {section.selectedItems.size}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -771,7 +790,7 @@ const Utilization = () => {
               <Card className="flex-1">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    Enhanced Utilization Tagging
+                    Utilization Tagging
                     <Badge variant="outline" className="text-xs">
                       {splitSections.find(s => s.id === activeSectionId)?.name}
                     </Badge>
