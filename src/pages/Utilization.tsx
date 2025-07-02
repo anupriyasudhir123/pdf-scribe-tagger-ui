@@ -235,6 +235,41 @@ const Utilization = () => {
     ));
   };
 
+  const handleCategoryToggle = (category: string) => {
+    if (!activeSectionId) return;
+    
+    const activeSection = splitSections.find(s => s.id === activeSectionId);
+    if (!activeSection || !activeSection.serviceType) return;
+
+    const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
+    const categoryItems = currentServices[category] || [];
+    
+    // Check if all items in this category are already selected
+    const allCategoryItemsSelected = categoryItems.every(item => 
+      activeSection.selectedItems.has(`${category}-${item}`)
+    );
+
+    const newSelectedItems = new Set(activeSection.selectedItems);
+    
+    if (allCategoryItemsSelected) {
+      // If all are selected, deselect all
+      categoryItems.forEach(item => {
+        newSelectedItems.delete(`${category}-${item}`);
+      });
+    } else {
+      // If not all are selected, select all
+      categoryItems.forEach(item => {
+        newSelectedItems.add(`${category}-${item}`);
+      });
+    }
+
+    setSplitSections(prev => prev.map(section => 
+      section.id === activeSectionId 
+        ? { ...section, selectedItems: newSelectedItems }
+        : section
+    ));
+  };
+
   const handleZoom = (direction: 'in' | 'out') => {
     setZoomLevel(prev => {
       if (direction === 'in') {
@@ -306,49 +341,69 @@ const Utilization = () => {
         )}
 
         <Accordion type="single" collapsible className="w-full">
-          {Object.entries(currentServices).map(([category, items]) => (
-            <AccordionItem key={category} value={category}>
-              <AccordionTrigger className="text-left">
-                <div className="flex items-center justify-between w-full mr-4">
-                  <span>{category}</span>
-                  <Badge variant="secondary">
-                    {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length}/{items.length}
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <ScrollArea className="h-32">
-                  <div className="flex flex-wrap gap-2 p-2">
-                    {items.map(item => {
-                      const itemKey = `${category}-${item}`;
-                      const isSelected = activeSection.selectedItems.has(itemKey);
-                      return (
-                        <Badge
-                          key={item}
-                          variant={isSelected ? "default" : "outline"}
-                          className="cursor-pointer hover:bg-primary/80 transition-colors"
-                          onClick={() => handleServiceItemToggle(category, item)}
-                        >
-                          {item}
-                          {isSelected && <X className="h-3 w-3 ml-1" />}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-2 p-2 border-t">
-                    <div className="text-xs text-gray-500 mb-1">Selected items:</div>
-                    <div className="flex flex-wrap gap-1">
-                      {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
-                        <Badge key={item} variant="secondary" className="text-xs">
-                          {item}
-                        </Badge>
-                      ))}
+          {Object.entries(currentServices).map(([category, items]) => {
+            const categoryItemsSelected = items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length;
+            const allCategoryItemsSelected = categoryItemsSelected === items.length;
+            
+            return (
+              <AccordionItem key={category} value={category}>
+                <AccordionTrigger className="text-left">
+                  <div className="flex items-center justify-between w-full mr-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCategoryToggle(category);
+                        }}
+                        className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                          allCategoryItemsSelected 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {allCategoryItemsSelected ? 'Deselect All' : 'Select All'}
+                      </button>
+                      <span>{category}</span>
                     </div>
+                    <Badge variant="secondary">
+                      {categoryItemsSelected}/{items.length}
+                    </Badge>
                   </div>
-                </ScrollArea>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ScrollArea className="h-32">
+                    <div className="flex flex-wrap gap-2 p-2">
+                      {items.map(item => {
+                        const itemKey = `${category}-${item}`;
+                        const isSelected = activeSection.selectedItems.has(itemKey);
+                        return (
+                          <Badge
+                            key={item}
+                            variant={isSelected ? "default" : "outline"}
+                            className="cursor-pointer hover:bg-primary/80 transition-colors"
+                            onClick={() => handleServiceItemToggle(category, item)}
+                          >
+                            {item}
+                            {isSelected && <X className="h-3 w-3 ml-1" />}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 p-2 border-t">
+                      <div className="text-xs text-gray-500 mb-1">Selected items:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
+                          <Badge key={item} variant="secondary" className="text-xs">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
         </Accordion>
       </div>
     );
@@ -357,12 +412,13 @@ const Utilization = () => {
   const renderDemographicsChips = () => {
     return (
       <div className="space-y-4">
+        <p className="text-sm text-gray-600">Click items to eliminate from verification</p>
         <div className="flex flex-wrap gap-2">
           {demographicOptions.map(demo => (
             <Badge
               key={demo}
-              variant={selectedDemographics.has(demo) ? "default" : "outline"}
-              className="cursor-pointer hover:bg-primary/80 transition-colors"
+              variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
+              className="cursor-pointer hover:bg-destructive/80 transition-colors"
               onClick={() => handleDemographicToggle(demo)}
             >
               {demo}
@@ -372,12 +428,12 @@ const Utilization = () => {
           {customDemographics.map(demo => (
             <Badge
               key={demo}
-              variant="default"
+              variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
               className="cursor-pointer"
               onClick={() => handleDemographicToggle(demo)}
             >
               {demo}
-              <X className="h-3 w-3 ml-1" />
+              {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
             </Badge>
           ))}
         </div>
@@ -404,6 +460,15 @@ const Utilization = () => {
           >
             <Plus className="h-4 w-4" />
           </Button>
+        </div>
+        
+        {/* QC Summary */}
+        <div className="mt-6 p-3 bg-gray-50 border rounded-md">
+          <h4 className="font-semibold text-gray-800 mb-2">QC Summary</h4>
+          <div className="space-y-1 text-sm text-gray-600">
+            <div>Demographics Verified: {demographicOptions.length + customDemographics.length - selectedDemographics.size}/{demographicOptions.length + customDemographics.length}</div>
+            <div>Flags Raised: {selectedQCFlags.size}</div>
+          </div>
         </div>
       </div>
     );
@@ -857,7 +922,7 @@ const Utilization = () => {
                       <ScrollArea className="h-full">
                         <div className="space-y-4 p-2 border-2 border-red-200 rounded-md bg-red-50">
                           <Label className="text-base font-semibold text-red-600">
-                            Demographics Verification *
+                            Verify Demographics *
                           </Label>
                           {renderDemographicsChips()}
                         </div>
