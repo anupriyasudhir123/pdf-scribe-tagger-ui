@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -106,6 +106,7 @@ interface SplitSection {
   serviceType: string;
   selectedItems: Set<string>;
   pageWiseSelections: { [pageNumber: number]: Set<string> }; // New field for page-wise selections
+  currentViewingPage: number; // Add current viewing page for each section
 }
 
 const Utilization = () => {
@@ -191,13 +192,15 @@ const Utilization = () => {
       return;
     }
 
+    const sortedPages = [...selectedPages].sort((a, b) => a - b);
     const newSection: SplitSection = {
       id: `section_${Date.now()}`,
       name: `Section ${splitSections.length + 1}`,
-      pages: [...selectedPages].sort((a, b) => a - b),
+      pages: sortedPages,
       serviceType: '',
       selectedItems: new Set(),
-      pageWiseSelections: {} // Initialize empty page-wise selections
+      pageWiseSelections: {},
+      currentViewingPage: sortedPages[0] // Set first page as current viewing page
     };
 
     setSplitSections(prev => [...prev, newSection]);
@@ -217,11 +220,12 @@ const Utilization = () => {
   };
 
   const handleServiceItemToggle = (category: string, item: string) => {
-    if (!activeSectionId || hoveredPage === null) return;
+    if (!activeSectionId) return;
     
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection) return;
 
+    const currentPage = activeSection.currentViewingPage;
     const itemKey = `${category}-${item}`;
     
     setSplitSections(prev => prev.map(section => {
@@ -229,12 +233,12 @@ const Utilization = () => {
       
       const updatedSection = { ...section };
       
-      // Initialize page-wise selections for this page if not exists
-      if (!updatedSection.pageWiseSelections[hoveredPage]) {
-        updatedSection.pageWiseSelections[hoveredPage] = new Set();
+      // Initialize page-wise selections for current page if not exists
+      if (!updatedSection.pageWiseSelections[currentPage]) {
+        updatedSection.pageWiseSelections[currentPage] = new Set();
       }
       
-      const pageSelections = new Set(updatedSection.pageWiseSelections[hoveredPage]);
+      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPage]);
       
       if (pageSelections.has(itemKey)) {
         pageSelections.delete(itemKey);
@@ -242,7 +246,7 @@ const Utilization = () => {
         pageSelections.add(itemKey);
       }
       
-      updatedSection.pageWiseSelections[hoveredPage] = pageSelections;
+      updatedSection.pageWiseSelections[currentPage] = pageSelections;
       
       // Update overall selectedItems based on all page selections
       const allSelectedItems = new Set<string>();
@@ -256,16 +260,17 @@ const Utilization = () => {
   };
 
   const handleCategoryToggle = (category: string) => {
-    if (!activeSectionId || hoveredPage === null) return;
+    if (!activeSectionId) return;
     
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection || !activeSection.serviceType) return;
 
+    const currentPage = activeSection.currentViewingPage;
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     
-    // Check if all items in this category are already selected for this page
-    const currentPageSelections = activeSection.pageWiseSelections[hoveredPage] || new Set();
+    // Check if all items in this category are already selected for current page
+    const currentPageSelections = activeSection.pageWiseSelections[currentPage] || new Set();
     const allCategoryItemsSelected = categoryItems.every(item => 
       currentPageSelections.has(`${category}-${item}`)
     );
@@ -275,12 +280,12 @@ const Utilization = () => {
       
       const updatedSection = { ...section };
       
-      // Initialize page-wise selections for this page if not exists
-      if (!updatedSection.pageWiseSelections[hoveredPage]) {
-        updatedSection.pageWiseSelections[hoveredPage] = new Set();
+      // Initialize page-wise selections for current page if not exists
+      if (!updatedSection.pageWiseSelections[currentPage]) {
+        updatedSection.pageWiseSelections[currentPage] = new Set();
       }
       
-      const pageSelections = new Set(updatedSection.pageWiseSelections[hoveredPage]);
+      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPage]);
       
       if (allCategoryItemsSelected) {
         // If all are selected, deselect all
@@ -294,7 +299,7 @@ const Utilization = () => {
         });
       }
       
-      updatedSection.pageWiseSelections[hoveredPage] = pageSelections;
+      updatedSection.pageWiseSelections[currentPage] = pageSelections;
       
       // Update overall selectedItems based on all page selections
       const allSelectedItems = new Set<string>();
@@ -307,52 +312,27 @@ const Utilization = () => {
     }));
   };
 
-  const handleZoom = (direction: 'in' | 'out') => {
-    setZoomLevel(prev => {
-      if (direction === 'in') {
-        return Math.min(prev + 25, 200);
-      } else {
-        return Math.max(prev - 25, 50);
+  // Add function to handle page navigation within a section
+  const handleSectionPageChange = (direction: 'prev' | 'next') => {
+    if (!activeSectionId) return;
+    
+    setSplitSections(prev => prev.map(section => {
+      if (section.id !== activeSectionId) return section;
+      
+      const currentIndex = section.pages.indexOf(section.currentViewingPage);
+      let newIndex = currentIndex;
+      
+      if (direction === 'next' && currentIndex < section.pages.length - 1) {
+        newIndex = currentIndex + 1;
+      } else if (direction === 'prev' && currentIndex > 0) {
+        newIndex = currentIndex - 1;
       }
-    });
-  };
-
-  const handleDemographicToggle = (demographic: string) => {
-    setSelectedDemographics(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(demographic)) {
-        newSet.delete(demographic);
-      } else {
-        newSet.add(demographic);
-      }
-      return newSet;
-    });
-  };
-
-  const handleAddCustomDemographic = (value: string) => {
-    if (value.trim()) {
-      setCustomDemographics(prev => [...prev, value.trim()]);
-      setSelectedDemographics(prev => new Set([...prev, value.trim()]));
-    }
-  };
-
-  const handleQCFlagToggle = (flag: string) => {
-    setSelectedQCFlags(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(flag)) {
-        newSet.delete(flag);
-      } else {
-        newSet.add(flag);
-      }
-      return newSet;
-    });
-  };
-
-  const handleAddCustomQCFlag = (value: string) => {
-    if (value.trim()) {
-      setCustomQCFlags(prev => [...prev, value.trim()]);
-      setSelectedQCFlags(prev => new Set([...prev, value.trim()]));
-    }
+      
+      return {
+        ...section,
+        currentViewingPage: section.pages[newIndex]
+      };
+    }));
   };
 
   const renderServiceChips = () => {
@@ -361,22 +341,48 @@ const Utilization = () => {
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection || !activeSection.serviceType) return null;
 
-    const currentPageSelections = hoveredPage ? (activeSection.pageWiseSelections[hoveredPage] || new Set()) : new Set();
+    const currentPage = activeSection.currentViewingPage;
+    const currentPageSelections = activeSection.pageWiseSelections[currentPage] || new Set();
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     
     return (
       <div className="space-y-4">
-        {/* Page Number Display */}
-        {hoveredPage && (
-          <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-md">
-            <Label className="text-base font-semibold text-blue-600 flex items-center gap-2">
-              Page {hoveredPage} - Expected Count: {currentPageSelections.size}
+        {/* Current Page Display with Navigation */}
+        <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Label className="text-base font-semibold text-blue-600">
+                Tagging Page {currentPage}
+              </Label>
               <Badge variant="default" className="bg-blue-600">
                 {currentPageSelections.size} items selected
               </Badge>
-            </Label>
+            </div>
+            
+            {/* Page Navigation for Section */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSectionPageChange('prev')}
+                disabled={activeSection.pages.indexOf(currentPage) === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium px-2">
+                {activeSection.pages.indexOf(currentPage) + 1} of {activeSection.pages.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSectionPageChange('next')}
+                disabled={activeSection.pages.indexOf(currentPage) === activeSection.pages.length - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Overall Expected Count Display */}
         {activeSection.selectedItems.size > 0 && (
@@ -387,6 +393,12 @@ const Utilization = () => {
                 {activeSection.selectedItems.size} items across all pages
               </Badge>
             </Label>
+            <div className="mt-2 text-sm text-gray-600">
+              Page breakdown: {activeSection.pages.map(pageNum => {
+                const pageSelections = activeSection.pageWiseSelections[pageNum] || new Set();
+                return `Page ${pageNum}: ${pageSelections.size}`;
+              }).join(', ')}
+            </div>
           </div>
         )}
 
@@ -410,7 +422,6 @@ const Utilization = () => {
                             ? 'bg-blue-600 text-white' 
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
-                        disabled={!hoveredPage}
                       >
                         {allCategoryItemsSelected ? 'Deselect All' : 'Select All'}
                       </button>
@@ -431,8 +442,8 @@ const Utilization = () => {
                           <Badge
                             key={item}
                             variant={isSelected ? "default" : "outline"}
-                            className={`cursor-pointer hover:bg-primary/80 transition-colors ${!hoveredPage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => hoveredPage && handleServiceItemToggle(category, item)}
+                            className="cursor-pointer hover:bg-primary/80 transition-colors"
+                            onClick={() => handleServiceItemToggle(category, item)}
                           >
                             {item}
                             {isSelected && <X className="h-3 w-3 ml-1" />}
@@ -441,7 +452,7 @@ const Utilization = () => {
                       })}
                     </div>
                     <div className="mt-2 p-2 border-t">
-                      <div className="text-xs text-gray-500 mb-1">Selected items for page {hoveredPage || 'none'}:</div>
+                      <div className="text-xs text-gray-500 mb-1">Selected items for page {currentPage}:</div>
                       <div className="flex flex-wrap gap-1">
                         {items.filter(item => currentPageSelections.has(`${category}-${item}`)).map(item => (
                           <Badge key={item} variant="secondary" className="text-xs">
@@ -456,12 +467,6 @@ const Utilization = () => {
             );
           })}
         </Accordion>
-        
-        {!hoveredPage && (
-          <div className="text-center text-gray-500 text-sm p-4 border-2 border-dashed border-gray-300 rounded-md">
-            Hover over a page number on the left to start tagging items for that specific page
-          </div>
-        )}
       </div>
     );
   };
@@ -605,7 +610,7 @@ const Utilization = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  PDF Preview
+                  Enhanced PDF Preview & Management
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -684,10 +689,10 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Page Grid Selection with Hover */}
+                    {/* Page Grid Selection */}
                     <div className="p-4 flex-1">
                       <Label className="text-sm font-medium mb-3 block">
-                        Select Pages to Group into Sections (Hover to tag specific pages):
+                        Select Pages to Group into Sections:
                       </Label>
                       <ScrollArea className="h-64">
                         <div className="grid grid-cols-4 gap-3">
@@ -700,8 +705,6 @@ const Utilization = () => {
                                   : "border-gray-200 hover:border-gray-300"
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
-                              onMouseEnter={() => setHoveredPage(pageNum)}
-                              onMouseLeave={() => setHoveredPage(null)}
                             >
                               <div className="bg-white h-24 rounded border flex flex-col items-center justify-center shadow-sm">
                                 <FileText className="h-8 w-8 text-gray-400 mb-1" />
@@ -710,11 +713,6 @@ const Utilization = () => {
                               {selectedPages.includes(pageNum) && (
                                 <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                                   ✓
-                                </div>
-                              )}
-                              {hoveredPage === pageNum && (
-                                <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                                  {pageNum}
                                 </div>
                               )}
                             </div>
@@ -791,11 +789,9 @@ const Utilization = () => {
                               <div className="text-xs text-gray-500">
                                 Items: {section.selectedItems.size}
                               </div>
-                              {section.selectedItems.size > 0 && (
-                                <div className="text-xs font-medium text-blue-600 mt-1">
-                                  Expected Count: {section.selectedItems.size}
-                                </div>
-                              )}
+                              <div className="text-xs text-blue-600 font-medium">
+                                Current: Page {section.currentViewingPage}
+                              </div>
                             </div>
                           ))}
                         </div>
