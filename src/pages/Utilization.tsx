@@ -105,8 +105,8 @@ interface SplitSection {
   pages: number[];
   serviceType: string;
   selectedItems: Set<string>;
-  pageWiseSelections: { [pageNumber: number]: Set<string> }; // New field for page-wise selections
-  currentViewingPage: number; // Add current viewing page for each section
+  pageWiseSelections: { [pageNumber: number]: Set<string> };
+  currentViewingPage: number;
 }
 
 const Utilization = () => {
@@ -118,7 +118,7 @@ const Utilization = () => {
   const [splitSections, setSplitSections] = useState<SplitSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
-  const [hoveredPage, setHoveredPage] = useState<number | null>(null); // New state for hovered page
+  const [hoveredPage, setHoveredPage] = useState<number | null>(null);
   
   // Lab Partner Selection
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
@@ -142,12 +142,59 @@ const Utilization = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
+  // Missing function implementations
+  const handleDemographicToggle = (demo: string) => {
+    setSelectedDemographics(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(demo)) {
+        newSet.delete(demo);
+      } else {
+        newSet.add(demo);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddCustomDemographic = (demo: string) => {
+    if (demo.trim() && !customDemographics.includes(demo)) {
+      setCustomDemographics(prev => [...prev, demo]);
+    }
+  };
+
+  const handleQCFlagToggle = (flag: string) => {
+    setSelectedQCFlags(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(flag)) {
+        newSet.delete(flag);
+      } else {
+        newSet.add(flag);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddCustomQCFlag = (flag: string) => {
+    if (flag.trim() && !customQCFlags.includes(flag)) {
+      setCustomQCFlags(prev => [...prev, flag]);
+    }
+  };
+
+  const handleZoom = (direction: 'in' | 'out') => {
+    setZoomLevel(prev => {
+      if (direction === 'in') {
+        return Math.min(200, prev + 25);
+      } else {
+        return Math.max(50, prev - 25);
+      }
+    });
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const newFiles: FileData[] = files.map(file => ({
       name: file.name,
       file: file,
-      pages: Math.floor(Math.random() * 15) + 1 // Mock page count
+      pages: Math.floor(Math.random() * 15) + 1
     }));
     setUploadedFiles(prev => [...prev, ...newFiles]);
     
@@ -200,12 +247,15 @@ const Utilization = () => {
       serviceType: '',
       selectedItems: new Set(),
       pageWiseSelections: {},
-      currentViewingPage: sortedPages[0] // Set first page as current viewing page
+      currentViewingPage: sortedPages[0]
     };
 
     setSplitSections(prev => [...prev, newSection]);
     setSelectedPages([]);
     setActiveSectionId(newSection.id);
+    
+    // Automatically set the current page to the first page of the new section
+    setCurrentPage(sortedPages[0]);
     
     toast({
       title: "Section Created",
@@ -225,7 +275,7 @@ const Utilization = () => {
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection) return;
 
-    const currentPage = activeSection.currentViewingPage;
+    const currentPageInSection = activeSection.currentViewingPage;
     const itemKey = `${category}-${item}`;
     
     setSplitSections(prev => prev.map(section => {
@@ -233,12 +283,11 @@ const Utilization = () => {
       
       const updatedSection = { ...section };
       
-      // Initialize page-wise selections for current page if not exists
-      if (!updatedSection.pageWiseSelections[currentPage]) {
-        updatedSection.pageWiseSelections[currentPage] = new Set();
+      if (!updatedSection.pageWiseSelections[currentPageInSection]) {
+        updatedSection.pageWiseSelections[currentPageInSection] = new Set();
       }
       
-      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPage]);
+      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPageInSection]);
       
       if (pageSelections.has(itemKey)) {
         pageSelections.delete(itemKey);
@@ -246,9 +295,8 @@ const Utilization = () => {
         pageSelections.add(itemKey);
       }
       
-      updatedSection.pageWiseSelections[currentPage] = pageSelections;
+      updatedSection.pageWiseSelections[currentPageInSection] = pageSelections;
       
-      // Update overall selectedItems based on all page selections
       const allSelectedItems = new Set<string>();
       Object.values(updatedSection.pageWiseSelections).forEach(pageSet => {
         pageSet.forEach(item => allSelectedItems.add(item));
@@ -265,12 +313,11 @@ const Utilization = () => {
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection || !activeSection.serviceType) return;
 
-    const currentPage = activeSection.currentViewingPage;
+    const currentPageInSection = activeSection.currentViewingPage;
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     
-    // Check if all items in this category are already selected for current page
-    const currentPageSelections = activeSection.pageWiseSelections[currentPage] || new Set();
+    const currentPageSelections = activeSection.pageWiseSelections[currentPageInSection] || new Set();
     const allCategoryItemsSelected = categoryItems.every(item => 
       currentPageSelections.has(`${category}-${item}`)
     );
@@ -280,28 +327,24 @@ const Utilization = () => {
       
       const updatedSection = { ...section };
       
-      // Initialize page-wise selections for current page if not exists
-      if (!updatedSection.pageWiseSelections[currentPage]) {
-        updatedSection.pageWiseSelections[currentPage] = new Set();
+      if (!updatedSection.pageWiseSelections[currentPageInSection]) {
+        updatedSection.pageWiseSelections[currentPageInSection] = new Set();
       }
       
-      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPage]);
+      const pageSelections = new Set(updatedSection.pageWiseSelections[currentPageInSection]);
       
       if (allCategoryItemsSelected) {
-        // If all are selected, deselect all
         categoryItems.forEach(item => {
           pageSelections.delete(`${category}-${item}`);
         });
       } else {
-        // If not all are selected, select all
         categoryItems.forEach(item => {
           pageSelections.add(`${category}-${item}`);
         });
       }
       
-      updatedSection.pageWiseSelections[currentPage] = pageSelections;
+      updatedSection.pageWiseSelections[currentPageInSection] = pageSelections;
       
-      // Update overall selectedItems based on all page selections
       const allSelectedItems = new Set<string>();
       Object.values(updatedSection.pageWiseSelections).forEach(pageSet => {
         pageSet.forEach(item => allSelectedItems.add(item));
@@ -328,11 +371,25 @@ const Utilization = () => {
         newIndex = currentIndex - 1;
       }
       
+      const newPage = section.pages[newIndex];
+      
+      // Update both section's current viewing page AND the main currentPage
+      setCurrentPage(newPage);
+      
       return {
         ...section,
-        currentViewingPage: section.pages[newIndex]
+        currentViewingPage: newPage
       };
     }));
+  };
+
+  const handleSectionSelection = (sectionId: string) => {
+    setActiveSectionId(sectionId);
+    const selectedSection = splitSections.find(s => s.id === sectionId);
+    if (selectedSection) {
+      // Automatically set the current page to the section's current viewing page
+      setCurrentPage(selectedSection.currentViewingPage);
+    }
   };
 
   const renderServiceChips = () => {
@@ -610,7 +667,7 @@ const Utilization = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  Enhanced PDF Preview & Management
+                  PDF Preview
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -742,7 +799,19 @@ const Utilization = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          onClick={() => {
+                            const newPage = Math.max(1, currentPage - 1);
+                            setCurrentPage(newPage);
+                            // Update active section's current viewing page if it exists
+                            if (activeSectionId) {
+                              const section = splitSections.find(s => s.id === activeSectionId);
+                              if (section && section.pages.includes(newPage)) {
+                                setSplitSections(prev => prev.map(s => 
+                                  s.id === activeSectionId ? { ...s, currentViewingPage: newPage } : s
+                                ));
+                              }
+                            }
+                          }}
                           disabled={currentPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4" />
@@ -751,7 +820,19 @@ const Utilization = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          onClick={() => {
+                            const newPage = Math.min(totalPages, currentPage + 1);
+                            setCurrentPage(newPage);
+                            // Update active section's current viewing page if it exists
+                            if (activeSectionId) {
+                              const section = splitSections.find(s => s.id === activeSectionId);
+                              if (section && section.pages.includes(newPage)) {
+                                setSplitSections(prev => prev.map(s => 
+                                  s.id === activeSectionId ? { ...s, currentViewingPage: newPage } : s
+                                ));
+                              }
+                            }
+                          }}
                           disabled={currentPage === totalPages}
                         >
                           <ChevronRight className="h-4 w-4" />
@@ -772,7 +853,7 @@ const Utilization = () => {
                                   ? 'border-blue-500 bg-blue-50'
                                   : 'border-gray-200 hover:border-gray-300 bg-white'
                               }`}
-                              onClick={() => setActiveSectionId(section.id)}
+                              onClick={() => handleSectionSelection(section.id)}
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <Label className="font-medium cursor-pointer">{section.name}</Label>
@@ -805,6 +886,7 @@ const Utilization = () => {
                   setUploadedFiles([]);
                   setSplitSections([]);
                   setActiveSectionId(null);
+                  setCurrentPage(1);
                 }} className="w-full">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear All Data
