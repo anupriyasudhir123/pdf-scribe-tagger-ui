@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -932,22 +933,6 @@ const Utilization = () => {
                     <TabsContent value="qc" className="flex-1 h-0">
                       <ScrollArea className="h-full">
                         <div className="space-y-6">
-                          <div className="p-3 border-2 border-red-200 rounded-md bg-red-50">
-                            <Label className="text-base font-semibold text-red-600 flex items-center gap-2 mb-3">
-                              QC Status *
-                            </Label>
-                            <Select value={qcStatus} onValueChange={setQcStatus}>
-                              <SelectTrigger className="border-red-300">
-                                <SelectValue placeholder="Select QC status" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {qcStatusOptions.map(status => (
-                                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
                           <div>
                             <Label className="text-base font-medium mb-2 block">Report Date</Label>
                             <Input
@@ -963,6 +948,22 @@ const Utilization = () => {
                               QC Flags *
                             </Label>
                             {renderQCFlagsChips()}
+                          </div>
+
+                          <div className="p-3 border-2 border-red-200 rounded-md bg-red-50">
+                            <Label className="text-base font-semibold text-red-600 flex items-center gap-2 mb-3">
+                              QC Status *
+                            </Label>
+                            <Select value={qcStatus} onValueChange={setQcStatus}>
+                              <SelectTrigger className="border-red-300">
+                                <SelectValue placeholder="Select QC status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {qcStatusOptions.map(status => (
+                                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           
                           <div>
