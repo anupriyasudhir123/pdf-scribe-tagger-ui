@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -106,6 +105,7 @@ interface SplitSection {
   pages: number[];
   serviceType: string;
   selectedItems: Set<string>;
+  pageWiseSelections: { [pageNumber: number]: Set<string> }; // New field for page-wise selections
 }
 
 const Utilization = () => {
@@ -117,6 +117,7 @@ const Utilization = () => {
   const [splitSections, setSplitSections] = useState<SplitSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [hoveredPage, setHoveredPage] = useState<number | null>(null); // New state for hovered page
   
   // Lab Partner Selection
   const [selectedLabPartner, setSelectedLabPartner] = useState('');
@@ -195,7 +196,8 @@ const Utilization = () => {
       name: `Section ${splitSections.length + 1}`,
       pages: [...selectedPages].sort((a, b) => a - b),
       serviceType: '',
-      selectedItems: new Set()
+      selectedItems: new Set(),
+      pageWiseSelections: {} // Initialize empty page-wise selections
     };
 
     setSplitSections(prev => [...prev, newSection]);
@@ -215,29 +217,46 @@ const Utilization = () => {
   };
 
   const handleServiceItemToggle = (category: string, item: string) => {
-    if (!activeSectionId) return;
+    if (!activeSectionId || hoveredPage === null) return;
     
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection) return;
 
     const itemKey = `${category}-${item}`;
-    const newSelectedItems = new Set(activeSection.selectedItems);
     
-    if (newSelectedItems.has(itemKey)) {
-      newSelectedItems.delete(itemKey);
-    } else {
-      newSelectedItems.add(itemKey);
-    }
-
-    setSplitSections(prev => prev.map(section => 
-      section.id === activeSectionId 
-        ? { ...section, selectedItems: newSelectedItems }
-        : section
-    ));
+    setSplitSections(prev => prev.map(section => {
+      if (section.id !== activeSectionId) return section;
+      
+      const updatedSection = { ...section };
+      
+      // Initialize page-wise selections for this page if not exists
+      if (!updatedSection.pageWiseSelections[hoveredPage]) {
+        updatedSection.pageWiseSelections[hoveredPage] = new Set();
+      }
+      
+      const pageSelections = new Set(updatedSection.pageWiseSelections[hoveredPage]);
+      
+      if (pageSelections.has(itemKey)) {
+        pageSelections.delete(itemKey);
+      } else {
+        pageSelections.add(itemKey);
+      }
+      
+      updatedSection.pageWiseSelections[hoveredPage] = pageSelections;
+      
+      // Update overall selectedItems based on all page selections
+      const allSelectedItems = new Set<string>();
+      Object.values(updatedSection.pageWiseSelections).forEach(pageSet => {
+        pageSet.forEach(item => allSelectedItems.add(item));
+      });
+      updatedSection.selectedItems = allSelectedItems;
+      
+      return updatedSection;
+    }));
   };
 
   const handleCategoryToggle = (category: string) => {
-    if (!activeSectionId) return;
+    if (!activeSectionId || hoveredPage === null) return;
     
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection || !activeSection.serviceType) return;
@@ -245,30 +264,47 @@ const Utilization = () => {
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     const categoryItems = currentServices[category] || [];
     
-    // Check if all items in this category are already selected
+    // Check if all items in this category are already selected for this page
+    const currentPageSelections = activeSection.pageWiseSelections[hoveredPage] || new Set();
     const allCategoryItemsSelected = categoryItems.every(item => 
-      activeSection.selectedItems.has(`${category}-${item}`)
+      currentPageSelections.has(`${category}-${item}`)
     );
 
-    const newSelectedItems = new Set(activeSection.selectedItems);
-    
-    if (allCategoryItemsSelected) {
-      // If all are selected, deselect all
-      categoryItems.forEach(item => {
-        newSelectedItems.delete(`${category}-${item}`);
+    setSplitSections(prev => prev.map(section => {
+      if (section.id !== activeSectionId) return section;
+      
+      const updatedSection = { ...section };
+      
+      // Initialize page-wise selections for this page if not exists
+      if (!updatedSection.pageWiseSelections[hoveredPage]) {
+        updatedSection.pageWiseSelections[hoveredPage] = new Set();
+      }
+      
+      const pageSelections = new Set(updatedSection.pageWiseSelections[hoveredPage]);
+      
+      if (allCategoryItemsSelected) {
+        // If all are selected, deselect all
+        categoryItems.forEach(item => {
+          pageSelections.delete(`${category}-${item}`);
+        });
+      } else {
+        // If not all are selected, select all
+        categoryItems.forEach(item => {
+          pageSelections.add(`${category}-${item}`);
+        });
+      }
+      
+      updatedSection.pageWiseSelections[hoveredPage] = pageSelections;
+      
+      // Update overall selectedItems based on all page selections
+      const allSelectedItems = new Set<string>();
+      Object.values(updatedSection.pageWiseSelections).forEach(pageSet => {
+        pageSet.forEach(item => allSelectedItems.add(item));
       });
-    } else {
-      // If not all are selected, select all
-      categoryItems.forEach(item => {
-        newSelectedItems.add(`${category}-${item}`);
-      });
-    }
-
-    setSplitSections(prev => prev.map(section => 
-      section.id === activeSectionId 
-        ? { ...section, selectedItems: newSelectedItems }
-        : section
-    ));
+      updatedSection.selectedItems = allSelectedItems;
+      
+      return updatedSection;
+    }));
   };
 
   const handleZoom = (direction: 'in' | 'out') => {
@@ -325,17 +361,30 @@ const Utilization = () => {
     const activeSection = splitSections.find(s => s.id === activeSectionId);
     if (!activeSection || !activeSection.serviceType) return null;
 
+    const currentPageSelections = hoveredPage ? (activeSection.pageWiseSelections[hoveredPage] || new Set()) : new Set();
     const currentServices = activeSection.serviceType === 'Pathology' ? pathologyServices : otherServices;
     
     return (
       <div className="space-y-4">
-        {/* Expected Count Display */}
-        {activeSection.selectedItems.size > 0 && (
+        {/* Page Number Display */}
+        {hoveredPage && (
           <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-md">
             <Label className="text-base font-semibold text-blue-600 flex items-center gap-2">
-              Expected Count (Total): {activeSection.selectedItems.size}
+              Page {hoveredPage} - Expected Count: {currentPageSelections.size}
               <Badge variant="default" className="bg-blue-600">
-                {activeSection.selectedItems.size} items selected
+                {currentPageSelections.size} items selected
+              </Badge>
+            </Label>
+          </div>
+        )}
+
+        {/* Overall Expected Count Display */}
+        {activeSection.selectedItems.size > 0 && (
+          <div className="p-3 bg-green-50 border-2 border-green-200 rounded-md">
+            <Label className="text-base font-semibold text-green-600 flex items-center gap-2">
+              Total Expected Count: {activeSection.selectedItems.size}
+              <Badge variant="default" className="bg-green-600">
+                {activeSection.selectedItems.size} items across all pages
               </Badge>
             </Label>
           </div>
@@ -343,7 +392,7 @@ const Utilization = () => {
 
         <Accordion type="single" collapsible className="w-full">
           {Object.entries(currentServices).map(([category, items]) => {
-            const categoryItemsSelected = items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).length;
+            const categoryItemsSelected = items.filter(item => currentPageSelections.has(`${category}-${item}`)).length;
             const allCategoryItemsSelected = categoryItemsSelected === items.length;
             
             return (
@@ -361,6 +410,7 @@ const Utilization = () => {
                             ? 'bg-blue-600 text-white' 
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
+                        disabled={!hoveredPage}
                       >
                         {allCategoryItemsSelected ? 'Deselect All' : 'Select All'}
                       </button>
@@ -376,13 +426,13 @@ const Utilization = () => {
                     <div className="flex flex-wrap gap-2 p-2">
                       {items.map(item => {
                         const itemKey = `${category}-${item}`;
-                        const isSelected = activeSection.selectedItems.has(itemKey);
+                        const isSelected = currentPageSelections.has(itemKey);
                         return (
                           <Badge
                             key={item}
                             variant={isSelected ? "default" : "outline"}
-                            className="cursor-pointer hover:bg-primary/80 transition-colors"
-                            onClick={() => handleServiceItemToggle(category, item)}
+                            className={`cursor-pointer hover:bg-primary/80 transition-colors ${!hoveredPage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => hoveredPage && handleServiceItemToggle(category, item)}
                           >
                             {item}
                             {isSelected && <X className="h-3 w-3 ml-1" />}
@@ -391,9 +441,9 @@ const Utilization = () => {
                       })}
                     </div>
                     <div className="mt-2 p-2 border-t">
-                      <div className="text-xs text-gray-500 mb-1">Selected items:</div>
+                      <div className="text-xs text-gray-500 mb-1">Selected items for page {hoveredPage || 'none'}:</div>
                       <div className="flex flex-wrap gap-1">
-                        {items.filter(item => activeSection.selectedItems.has(`${category}-${item}`)).map(item => (
+                        {items.filter(item => currentPageSelections.has(`${category}-${item}`)).map(item => (
                           <Badge key={item} variant="secondary" className="text-xs">
                             {item}
                           </Badge>
@@ -406,6 +456,12 @@ const Utilization = () => {
             );
           })}
         </Accordion>
+        
+        {!hoveredPage && (
+          <div className="text-center text-gray-500 text-sm p-4 border-2 border-dashed border-gray-300 rounded-md">
+            Hover over a page number on the left to start tagging items for that specific page
+          </div>
+        )}
       </div>
     );
   };
@@ -413,58 +469,63 @@ const Utilization = () => {
   const renderDemographicsChips = () => {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-gray-600">Click items to eliminate from verification</p>
-        <div className="flex flex-wrap gap-2">
-          {demographicOptions.map(demo => (
-            <Badge
-              key={demo}
-              variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
-              className="cursor-pointer hover:bg-destructive/80 transition-colors"
-              onClick={() => handleDemographicToggle(demo)}
+        <div className="p-3 border-2 border-red-200 rounded-md bg-red-50">
+          <Label className="text-base font-semibold text-red-600 mb-3 block">
+            Verify Demographics *
+          </Label>
+          <p className="text-sm text-gray-600 mb-3">Click items to eliminate from verification</p>
+          <div className="flex flex-wrap gap-2">
+            {demographicOptions.map(demo => (
+              <Badge
+                key={demo}
+                variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
+                className="cursor-pointer hover:bg-destructive/80 transition-colors"
+                onClick={() => handleDemographicToggle(demo)}
+              >
+                {demo}
+                {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
+              </Badge>
+            ))}
+            {customDemographics.map(demo => (
+              <Badge
+                key={demo}
+                variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
+                className="cursor-pointer"
+                onClick={() => handleDemographicToggle(demo)}
+              >
+                {demo}
+                {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Input
+              placeholder="Add custom demographic..."
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddCustomDemographic(e.currentTarget.value);
+                  e.currentTarget.value = '';
+                }
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const input = document.querySelector('input[placeholder="Add custom demographic..."]') as HTMLInputElement;
+                if (input) {
+                  handleAddCustomDemographic(input.value);
+                  input.value = '';
+                }
+              }}
             >
-              {demo}
-              {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
-            </Badge>
-          ))}
-          {customDemographics.map(demo => (
-            <Badge
-              key={demo}
-              variant={selectedDemographics.has(demo) ? "destructive" : "outline"}
-              className="cursor-pointer"
-              onClick={() => handleDemographicToggle(demo)}
-            >
-              {demo}
-              {selectedDemographics.has(demo) ? <X className="h-3 w-3 ml-1" /> : <Plus className="h-3 w-3 ml-1" />}
-            </Badge>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Add custom demographic..."
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddCustomDemographic(e.currentTarget.value);
-                e.currentTarget.value = '';
-              }
-            }}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const input = document.querySelector('input[placeholder="Add custom demographic..."]') as HTMLInputElement;
-              if (input) {
-                handleAddCustomDemographic(input.value);
-                input.value = '';
-              }
-            }}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         {/* QC Summary */}
-        <div className="mt-6 p-3 bg-gray-50 border rounded-md">
+        <div className="p-3 bg-gray-50 border rounded-md">
           <h4 className="font-semibold text-gray-800 mb-2">QC Summary</h4>
           <div className="space-y-1 text-sm text-gray-600">
             <div>Demographics Verified: {demographicOptions.length + customDemographics.length - selectedDemographics.size}/{demographicOptions.length + customDemographics.length}</div>
@@ -538,13 +599,13 @@ const Utilization = () => {
         </div>
 
         <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
-          {/* Left Side - PDF Upload and Preview (Enhanced) */}
+          {/* Left Side - PDF Upload and Preview */}
           <div className="col-span-8">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  Enhanced PDF Preview & Management
+                  PDF Preview
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
@@ -623,10 +684,10 @@ const Utilization = () => {
                       </div>
                     </div>
 
-                    {/* Page Grid Selection */}
+                    {/* Page Grid Selection with Hover */}
                     <div className="p-4 flex-1">
                       <Label className="text-sm font-medium mb-3 block">
-                        Select Pages to Group into Sections:
+                        Select Pages to Group into Sections (Hover to tag specific pages):
                       </Label>
                       <ScrollArea className="h-64">
                         <div className="grid grid-cols-4 gap-3">
@@ -639,6 +700,8 @@ const Utilization = () => {
                                   : "border-gray-200 hover:border-gray-300"
                               }`}
                               onClick={() => handlePageSelection(pageNum)}
+                              onMouseEnter={() => setHoveredPage(pageNum)}
+                              onMouseLeave={() => setHoveredPage(null)}
                             >
                               <div className="bg-white h-24 rounded border flex flex-col items-center justify-center shadow-sm">
                                 <FileText className="h-8 w-8 text-gray-400 mb-1" />
@@ -647,6 +710,11 @@ const Utilization = () => {
                               {selectedPages.includes(pageNum) && (
                                 <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
                                   ✓
+                                </div>
+                              )}
+                              {hoveredPage === pageNum && (
+                                <div className="absolute -top-2 -left-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                                  {pageNum}
                                 </div>
                               )}
                             </div>
@@ -863,13 +931,10 @@ const Utilization = () => {
                 </CardHeader>
                 <CardContent className="h-full">
                   <Tabs defaultValue="service" className="h-full flex flex-col">
-                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
                       <TabsTrigger value="service">Service Type</TabsTrigger>
-                      <TabsTrigger value="demographics" className="font-semibold text-red-600">
-                        Demographics *
-                      </TabsTrigger>
-                      <TabsTrigger value="qc" className="font-semibold text-red-600">
-                        QC *
+                      <TabsTrigger value="qc-verification" className="font-semibold text-red-600">
+                        QC Verification *
                       </TabsTrigger>
                     </TabsList>
 
@@ -919,20 +984,12 @@ const Utilization = () => {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="demographics" className="flex-1 h-0">
-                      <ScrollArea className="h-full">
-                        <div className="space-y-4 p-2 border-2 border-red-200 rounded-md bg-red-50">
-                          <Label className="text-base font-semibold text-red-600">
-                            Verify Demographics *
-                          </Label>
-                          {renderDemographicsChips()}
-                        </div>
-                      </ScrollArea>
-                    </TabsContent>
-
-                    <TabsContent value="qc" className="flex-1 h-0">
+                    <TabsContent value="qc-verification" className="flex-1 h-0">
                       <ScrollArea className="h-full">
                         <div className="space-y-6">
+                          {/* Demographics Section */}
+                          {renderDemographicsChips()}
+
                           <div>
                             <Label className="text-base font-medium mb-2 block">Report Date</Label>
                             <Input
